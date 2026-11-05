@@ -6,6 +6,59 @@
     <link rel="profile" href="https://gmpg.org/xfn/11">
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>Al-miftah &#8211; Hope for a Better Tomorrow</title>
+    <style id="almiftah-core-svg-fix">
+    /* --- AL-MIFTAH SVG & ELEMENTOR LAYOUT STABILIZATION --- */
+    .progress-wrap {
+        display: none !important;
+    }
+    svg.e-font-icon-svg,
+    .e-font-icon-svg,
+    .elementor-icon-list-icon svg {
+        width: 22px !important;
+        height: 22px !important;
+        max-width: 24px !important;
+        max-height: 24px !important;
+        display: inline-block !important;
+        vertical-align: middle !important;
+        fill: #C8963E !important;
+    }
+    .elementor-icon-list-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+    .elementor-icon-list-icon {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        line-height: 1 !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
+    /* Carousel / Swiper navigation arrow buttons */
+    .elementor-swiper-button,
+    .swiper-button-prev,
+    .swiper-button-next {
+        width: 44px !important;
+        height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+    }
+    .elementor-swiper-button svg,
+    .swiper-button-prev svg,
+    .swiper-button-next svg,
+    .elementor-swiper-button i,
+    .swiper-button-prev i,
+    .swiper-button-next i {
+        width: 18px !important;
+        height: 18px !important;
+        max-width: 18px !important;
+        max-height: 18px !important;
+        font-size: 18px !important;
+    }
+    </style>
 <meta name='robots' content='max-image-preview:large' />
 <link rel='dns-prefetch' href='//fonts.googleapis.com' />
 <link rel="alternate" type="application/rss+xml" title="Al-miftah - Hope for a Better Tomorrow &raquo; Feed" href="https://al-miftah.org/feed/" />
@@ -1184,7 +1237,7 @@ a    { text-decoration: none; color: inherit; }
                 <!-- ==== / off canvas end ==== -->
 
         
-                <button class="progress-wrap" aria-label="scroll indicator" title="back to top">
+                <button class="progress-wrap" aria-label="scroll indicator" title="back to top" style="display: none !important;">
                     <span></span>
                     <svg class="progress-circle svg-content" width="100%" height="100%" viewBox="-1 -1 102 102">
                     <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98" />
@@ -1275,7 +1328,7 @@ a    { text-decoration: none; color: inherit; }
                     </a>
                 </div>
                 <!-- Donate button -->
-                <a class="almiftah-donate-pill" href="https://al-miftah.org/donate/donate/">Donate Now ›</a>
+                <a class="almiftah-donate-pill" href="donate.php">Donate Now ›</a>
             </div>
 
         </nav>
@@ -1290,7 +1343,7 @@ a    { text-decoration: none; color: inherit; }
             <a href="https://al-miftah.org/contact-us">📞 Contact Us</a>
             <a href="https://al-miftah.org/register">✍️ Register</a>
             <a href="https://al-miftah.org/Login">✍️ login</a>
-            <a href="https://al-miftah.org/donate/donate/" class="m-donate">💛 Donate Now ›</a>
+            <a href="donate.php" class="m-donate">💛 Donate Now ›</a>
         </div>
 
         <!-- JavaScript for hamburger toggle -->
@@ -1341,7 +1394,7 @@ a    { text-decoration: none; color: inherit; }
 							<ul class="elementor-icon-list-items">
 							<li class="elementor-icon-list-item">
 											<span class="elementor-icon-list-icon">
-							<svg aria-hidden="true" class="e-font-icon-svg e-fas-mosque" viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg"><path d="M0 480c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V160H0v320zm579.16-192c17.86-17.39 28.84-37.34 28.84-58.91 0-52.86-41.79-93.79-87.92-122.9-41.94-26.47-80.63-57.77-111.96-96.22L400 0l-8.12 9.97c-31.33 38.45-70.01 69.76-111.96 96.22C233.79 135.3 192 176.23 192 229.09c0 21.57 10.98 41.52 28.84 58.91h358.32zM608 320H192c-17.67 0-32 14.33-32 32v128c0 17.67 14.33 32 32 32h32v-64c0-17.67 14.33-32 32-32s32 14.33 32 32v64h64v-72c0-48 48-72 48-72s48 24 48 72v72h64v-64c0-17.67 14.33-32 32-32s32 14.33 32 32v64h32c17.67 0 32-14.33 32-32V352c0-17.67-14.33-32-32-32zM64 0S0 32 0 96v32h128V96c0-64-64-96-64-96z"></path></svg>						</span>
+							<svg aria-hidden="true" class="e-font-icon-svg e-fas-mosque" width="22" height="22" viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" style="width:22px !important; height:22px !important; max-width:22px !important; max-height:22px !important; display:inline-block !important; vertical-align:middle !important; fill:#C8963E !important;"><path d="M0 480c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V160H0v320zm579.16-192c17.86-17.39 28.84-37.34 28.84-58.91 0-52.86-41.79-93.79-87.92-122.9-41.94-26.47-80.63-57.77-111.96-96.22L400 0l-8.12 9.97c-31.33 38.45-70.01 69.76-111.96 96.22C233.79 135.3 192 176.23 192 229.09c0 21.57 10.98 41.52 28.84 58.91h358.32zM608 320H192c-17.67 0-32 14.33-32 32v128c0 17.67 14.33 32 32 32h32v-64c0-17.67 14.33-32 32-32s32 14.33 32 32v64h64v-72c0-48 48-72 48-72s48 24 48 72v72h64v-64c0-17.67 14.33-32 32-32s32 14.33 32 32v64h32c17.67 0 32-14.33 32-32V352c0-17.67-14.33-32-32-32zM64 0S0 32 0 96v32h128V96c0-64-64-96-64-96z"></path></svg>						</span>
 										<span class="elementor-icon-list-text">Al - Miftah Educational Trust</span>
 									</li>
 						</ul>
@@ -1362,7 +1415,7 @@ Better Tomorrow</h2>				</div>
 	
 
 	<div class="section__cta two">
-		<a href="https://al-miftah.org/donate/donate/" class="btn--primary">Donate Now		<i class="fa-solid fa-arrow-right"></i></a>
+		<a href="donate.php" class="btn--primary">Donate Now		<i class="fa-solid fa-arrow-right"></i></a>
 	</div>
 
 	

@@ -1,6 +1,15 @@
 RewriteEngine On
 RewriteBase /
 
+# LiteSpeed Cache Control
+<IfModule LiteSpeed>
+CacheLookup off
+</IfModule>
+
+# 1. Fix Legacy / Nested Donate URLs -> donate.php
+RewriteRule ^donate/donate/?$ /donate.php [R=301,L]
+RewriteRule ^donate/?$ /donate.php [R=301,L]
+
 # Force UTF-8 encoding
 AddDefaultCharset UTF-8
 
