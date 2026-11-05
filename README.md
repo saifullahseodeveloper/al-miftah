@@ -29,3 +29,4 @@ Al Miftah ("The Key") is a non-profit educational and charitable initiative prov
 3. Access the web app in your browser:
    - User portal: `index.php` / `profile.php`
    - Admin CMS: `admin-panel/`
+
