@@ -1,0 +1,2466 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: 2024-08-15 11:45+0600\n"
+"PO-Revision-Date: 2024-08-15 11:45+0600\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.4.4\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-KeywordsList: __;_e;esc_html;esc_html__;esc_attr;esc_attr__;"
+"esc_attr_e;esc_html_e\n"
+"X-Poedit-SearchPath-0: .\n"
+
+#: admin/Footer/Init.php:33 admin/Header/Init.php:33
+#: admin/HeaderFooter/Init.php:33
+#: elementor/addons/elementor-pricing-widget.php:194
+#: lib/codestar-framework/fields/link_color/link_color.php:38
+msgid "Active"
+msgstr ""
+
+#: admin/Footer/Init.php:41 admin/Header/Init.php:41
+#: admin/HeaderFooter/Init.php:41 admin/Popup/Init.php:53
+msgid "Where to show?"
+msgstr ""
+
+#: admin/Footer/Init.php:46 admin/Header/Init.php:46
+#: admin/HeaderFooter/Init.php:46 admin/Popup/Init.php:58
+msgid "Enitre Site"
+msgstr ""
+
+#: admin/Footer/Init.php:49 admin/Header/Init.php:49
+#: admin/HeaderFooter/Init.php:49 admin/Popup/Init.php:61
+msgid "Select Group"
+msgstr ""
+
+#: admin/Footer/Init.php:52 admin/Header/Init.php:52
+#: admin/HeaderFooter/Init.php:52 admin/Popup/Init.php:64
+msgid "Select Manually"
+msgstr ""
+
+#: admin/Footer/Init.php:60 admin/Header/Init.php:60
+#: admin/HeaderFooter/Init.php:60 admin/Popup/Init.php:72
+msgid "All Pages"
+msgstr ""
+
+#: admin/Footer/Init.php:64 admin/Header/Init.php:64
+#: admin/HeaderFooter/Init.php:64 admin/Popup/Init.php:76
+msgid "All Posts"
+msgstr ""
+
+#: admin/Footer/Init.php:68 admin/Header/Init.php:68
+#: admin/HeaderFooter/Init.php:68 admin/Popup/Init.php:80
+msgid "Search Page"
+msgstr ""
+
+#: admin/Footer/Init.php:72 admin/Header/Init.php:72
+#: admin/HeaderFooter/Init.php:72 admin/Popup/Init.php:84
+msgid "Error Page"
+msgstr ""
+
+#: admin/Footer/Init.php:76 admin/Header/Init.php:76
+#: admin/HeaderFooter/Init.php:76 admin/Popup/Init.php:88
+msgid "Front Page"
+msgstr ""
+
+#: admin/Footer/Init.php:80 admin/Header/Init.php:80
+#: admin/HeaderFooter/Init.php:80 admin/Popup/Init.php:92
+msgid "Archive Pages"
+msgstr ""
+
+#: admin/Footer/Init.php:84 admin/Header/Init.php:84
+#: admin/HeaderFooter/Init.php:84 admin/Popup/Init.php:96
+msgid "All Inner Pages"
+msgstr ""
+
+#: admin/Footer/Init.php:90 admin/Header/Init.php:90
+#: admin/HeaderFooter/Init.php:90 admin/Popup/Init.php:102
+msgid "Select page"
+msgstr ""
+
+#: admin/Layouts/layouts.php:11
+msgid "Widget Area"
+msgstr ""
+
+#: admin/Layouts/layouts.php:17 admin/Layouts/layouts.php:18
+#: admin/Layouts/views/header.php:13
+msgid "Close"
+msgstr ""
+
+#: admin/Layouts/layouts.php:43
+msgid "Loading"
+msgstr ""
+
+#: admin/Layouts/views/error.php:8
+msgid "Template couldn't be loaded. Please activate you license key before."
+msgstr ""
+
+#: admin/Layouts/views/header-back.php:3
+msgid "Back to Library"
+msgstr ""
+
+#: admin/Layouts/views/insert-button.php:5 admin/Layouts/views/item.php:22
+msgid "Insert"
+msgstr ""
+
+#: admin/Layouts/views/item.php:29
+msgid "Type:"
+msgstr ""
+
+#: admin/Layouts/views/keywords.php:10
+msgid "Any Topic"
+msgstr ""
+
+#: admin/Layouts/views/live-button.php:5
+msgid "Live Preview"
+msgstr ""
+
+#: admin/Layouts/views/pro-button.php:6
+msgid "Go Pro"
+msgstr ""
+
+#: admin/Menu/Ajax.php:22
+msgid "Access denied."
+msgstr ""
+
+#: admin/Menu/Init.php:60
+msgid "IM Addons Dashboard"
+msgstr ""
+
+#: admin/Menu/Init.php:61
+msgid "IM Addons"
+msgstr ""
+
+#: admin/Menu/Init.php:70 admin/Menu/Init.php:85 admin/Menu/Init.php:92
+#: admin/Menu/Init.php:99 admin/Menu/Init.php:106 admin/Menu/Init.php:113
+#: admin/Menu/Init.php:120 admin/Menu/Init.php:127 admin/Menu/Init.php:134
+#, php-format
+msgid "%s - IM Addons Elementor Addons"
+msgstr ""
+
+#: admin/Menu/Init.php:157
+msgid "Dashboard"
+msgstr ""
+
+#: admin/Menu/view/dashboard.php:251
+msgid "Demo"
+msgstr ""
+
+#: admin/Menu/view/dashboard.php:269 admin/Menu/view/dashboard.php:285
+msgid "Save Changes"
+msgstr ""
+
+#: admin/Menu/view/dashboard.php:278
+msgid "Mailchimp Api Key"
+msgstr ""
+
+#: admin/Popup/Init.php:228
+msgid "Wrapper:"
+msgstr ""
+
+#: admin/Popup/Init.php:229
+msgid "Wrapper BG Color:"
+msgstr ""
+
+#: admin/Popup/Init.php:231
+msgid "Wrapper BG Opacity:"
+msgstr ""
+
+#: admin/Popup/Init.php:234
+msgid "Inner Box:"
+msgstr ""
+
+#: admin/Popup/Init.php:235
+msgid "Inner width:"
+msgstr ""
+
+#: admin/Popup/Init.php:239
+msgid "Inner position:"
+msgstr ""
+
+#: admin/Popup/Init.php:242
+#: elementor/addons/elementor-heading-title-widget.php:169
+#: lib/codestar-framework/fields/typography/typography.php:172
+msgid "Center"
+msgstr ""
+
+#: admin/Popup/Init.php:244
+msgid "Top Left"
+msgstr ""
+
+#: admin/Popup/Init.php:246
+msgid "Top Right"
+msgstr ""
+
+#: admin/Popup/Init.php:248
+msgid "Bottom Left"
+msgstr ""
+
+#: admin/Popup/Init.php:250
+msgid "Bottom Right"
+msgstr ""
+
+#: admin/Popup/Init.php:254
+msgid "Close Button:"
+msgstr ""
+
+#: admin/Popup/Init.php:255
+msgid "Close button BG Color:"
+msgstr ""
+
+#: admin/Popup/Init.php:258
+msgid "Close button Color:"
+msgstr ""
+
+#: admin/WidgetsMap/Advanced.php:33
+msgid "Countdown"
+msgstr ""
+
+#: admin/WidgetsMap/Basic.php:32
+msgid "Accordion"
+msgstr ""
+
+#: admin/WidgetsMap/Form.php:34
+#: elementor/addons/elementor-service-grid-widget.php:226
+#: elementor/addons/elementor-testimonials-widget.php:230
+msgid "Text"
+msgstr ""
+
+#: admin/WidgetsMap/Site.php:34
+msgid "Post Title"
+msgstr ""
+
+#: admin/WidgetsMap/Woo.php:32
+msgid "Products"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:51 admin/theme-custom-post-type.php:52
+#: admin/theme-custom-post-type.php:56 wp-widgets/theme-post-tags-menu.php:83
+msgid "Service"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:57
+msgid "Services"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:58
+msgid "View Service"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:59 admin/theme-custom-post-type.php:60
+msgid "Add New Service"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:61
+msgid "Edit Service"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:62
+msgid "Update Service"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:63
+msgid "Search Service"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:64 admin/theme-custom-post-type.php:99
+#: admin/theme-custom-post-type.php:134
+msgid "Not Found"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:65 admin/theme-custom-post-type.php:100
+#: admin/theme-custom-post-type.php:135
+msgid "Not found in Trash"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:66
+msgid "Service Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:67
+msgid "Remove Service Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:68
+msgid "Set Service Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:86 admin/theme-custom-post-type.php:87
+#: admin/theme-custom-post-type.php:91 wp-widgets/theme-post-tags-menu.php:81
+msgid "Project"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:92
+msgid "Projects"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:93
+msgid "View Project"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:94 admin/theme-custom-post-type.php:95
+msgid "Add New Project"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:96
+msgid "Edit Project"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:97
+msgid "Update Project"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:98
+msgid "Search Project"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:101
+msgid "Project Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:102
+msgid "Remove Project Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:103
+msgid "Set Project Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:121 admin/theme-custom-post-type.php:122
+msgid "team"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:126 admin/theme-custom-post-type.php:127
+msgid "Teams"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:128
+msgid "View Teams"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:129 admin/theme-custom-post-type.php:130
+msgid "Add New Team Member"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:131
+msgid "Edit Team"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:132
+msgid "Update Team"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:133
+msgid "Search Team"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:136
+msgid "Team Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:137
+msgid "Remove Team Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:138
+msgid "Set Team Image"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:174 admin/theme-custom-post-type.php:175
+#: admin/theme-custom-post-type.php:176
+#: elementor/addons/elementor-service-category-widget.php:33
+#: elementor/addons/elementor-service-category-widget.php:76
+#: wp-widgets/theme-post-category-widget.php:90
+msgid "Service Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:177
+msgid "All Service Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:178
+msgid "Add New Service Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:197 admin/theme-custom-post-type.php:198
+#: admin/theme-custom-post-type.php:199
+msgid "Project Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:200
+msgid "All Project Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:201
+msgid "Add New Project Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:220 admin/theme-custom-post-type.php:221
+#: admin/theme-custom-post-type.php:222
+msgid "Team Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:223
+msgid "All Team Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:224
+msgid "Add New Team Category"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:258 admin/theme-custom-post-type.php:259
+#: admin/theme-custom-post-type.php:260
+msgid "Service Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:261
+msgid "All Service Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:262
+msgid "Add New Service Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:282 admin/theme-custom-post-type.php:283
+#: admin/theme-custom-post-type.php:284
+msgid "Project Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:285
+msgid "All Project Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:286
+msgid "Add New Project Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:306 admin/theme-custom-post-type.php:307
+#: admin/theme-custom-post-type.php:308
+msgid "Team Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:309
+msgid "All Team Tag"
+msgstr ""
+
+#: admin/theme-custom-post-type.php:310
+msgid "Add New Team Tag"
+msgstr ""
+
+#: admin/theme-menu-page.php:63
+msgid "Charifund Page"
+msgstr ""
+
+#: admin/theme-menu-page.php:64
+msgid "Charifund Settings"
+msgstr ""
+
+#: admin/theme-menu-page.php:89 admin/theme-menu-page.php:106
+#: admin/theme-menu-page.php:123
+#, php-format
+msgid "%s"
+msgstr ""
+
+#: admin/theme-menu-page.php:94 admin/theme-menu-page.php:111
+#: admin/theme-menu-page.php:128
+#, php-format
+msgid "%s Categories"
+msgstr ""
+
+#: admin/theme-menu-page.php:99 admin/theme-menu-page.php:116
+#: admin/theme-menu-page.php:133
+#, php-format
+msgid "%s Tag"
+msgstr ""
+
+#: admin/theme-post-column-customize.php:49
+#: admin/theme-post-column-customize.php:113
+#: admin/theme-post-column-customize.php:158
+#: elementor/addons/elementor-about-counter-widget.php:95
+#: elementor/addons/elementor-about-counter-widget.php:240
+#: elementor/addons/elementor-banner-slider-widget.php:83
+#: elementor/addons/elementor-banner-widget.php:163
+#: elementor/addons/elementor-blog-post-widget.php:188
+#: elementor/addons/elementor-contact-form-widget.php:97
+#: elementor/addons/elementor-heading-title-widget.php:110
+#: elementor/addons/elementor-pricing-widget.php:116
+#: elementor/addons/elementor-progress-bar-widget.php:96
+#: elementor/addons/elementor-project-grid-widget.php:141
+#: elementor/addons/elementor-project-info-widget.php:83
+#: elementor/addons/elementor-project-info-widget.php:118
+#: elementor/addons/elementor-service-category-widget.php:83
+#: elementor/addons/elementor-service-category-widget.php:118
+#: elementor/addons/elementor-service-download-widget.php:83
+#: elementor/addons/elementor-service-download-widget.php:118
+#: elementor/addons/elementor-service-grid-widget.php:110
+#: elementor/addons/elementor-service-grid-widget.php:218
+#: elementor/addons/elementor-team-grid-widget.php:129
+#: elementor/addons/elementor-testimonials-widget.php:109
+#: elementor/addons/elementor-testimonials-widget.php:214
+#: elementor/addons/elementor-theme-accordion-widget.php:96
+#: elementor/addons/elementor-theme-counter-widget.php:123
+#: wp-widgets/theme-contact-info-widget.php:24
+#: wp-widgets/theme-file-download-widget.php:24
+#: wp-widgets/theme-post-category-widget.php:98
+#: wp-widgets/theme-post-search-widget.php:24
+#: wp-widgets/theme-post-tags-menu.php:91
+#: wp-widgets/theme-recent-post-title-widget.php:118
+#: wp-widgets/theme-recent-post-widget.php:126
+msgid "Title"
+msgstr ""
+
+#: admin/theme-post-column-customize.php:50
+#: admin/theme-post-column-customize.php:114
+#: admin/theme-post-column-customize.php:159
+msgid "Thumbnail"
+msgstr ""
+
+#: admin/theme-post-column-customize.php:53
+#: admin/theme-post-column-customize.php:82
+#: admin/theme-post-column-customize.php:117
+#: admin/theme-post-column-customize.php:127
+#: admin/theme-post-column-customize.php:171 inc/csf-taxonomy.php:35
+#: inc/csf-taxonomy.php:58 inc/csf-taxonomy.php:81 inc/csf-taxonomy.php:103
+#: wp-widgets/theme-about-us-widget.php:47
+#: wp-widgets/theme-contact-info-widget.php:54
+#: wp-widgets/theme-social-share-widget.php:35
+msgid "Icon"
+msgstr ""
+
+#: admin/theme-post-column-customize.php:54
+#: admin/theme-post-column-customize.php:118
+#: admin/theme-post-column-customize.php:162
+#: elementor/addons/elementor-blog-post-widget.php:189
+#: wp-widgets/theme-post-category-widget.php:99
+#: wp-widgets/theme-post-tags-menu.php:92
+#: wp-widgets/theme-recent-post-title-widget.php:119
+#: wp-widgets/theme-recent-post-widget.php:127
+msgid "Date"
+msgstr ""
+
+#: demo-import/theme-demo-data-import.php:29
+msgid ""
+"Please Give Some Time To Import Theme Demo Data, It May Take 5-10 Minutes, "
+"It Will Download All Theme Data From Server So Be Cool!."
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:33
+#: elementor/addons/elementor-about-counter-widget.php:76
+msgid "About Counter"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:83
+#: elementor/addons/elementor-heading-title-widget.php:97
+#: elementor/addons/elementor-pricing-widget.php:104
+#: elementor/addons/elementor-service-grid-widget.php:97
+#: elementor/addons/elementor-team-grid-widget.php:117
+#: elementor/addons/elementor-testimonials-widget.php:96
+msgid "Sub Title"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:88
+#: elementor/addons/elementor-heading-title-widget.php:102
+#: elementor/addons/elementor-pricing-widget.php:109
+#: elementor/addons/elementor-service-grid-widget.php:102
+#: elementor/addons/elementor-team-grid-widget.php:122
+#: elementor/addons/elementor-testimonials-widget.php:101
+msgid "Enter your sub title"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:100
+#: elementor/addons/elementor-banner-slider-widget.php:88
+#: elementor/addons/elementor-banner-widget.php:168
+#: elementor/addons/elementor-contact-form-widget.php:102
+#: elementor/addons/elementor-heading-title-widget.php:115
+#: elementor/addons/elementor-pricing-widget.php:121
+#: elementor/addons/elementor-project-info-widget.php:88
+#: elementor/addons/elementor-service-category-widget.php:88
+#: elementor/addons/elementor-service-download-widget.php:88
+#: elementor/addons/elementor-service-grid-widget.php:115
+#: elementor/addons/elementor-team-grid-widget.php:134
+#: elementor/addons/elementor-testimonials-widget.php:114
+msgid "Enter your title"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:107
+#: elementor/addons/elementor-banner-slider-widget.php:108
+#: elementor/addons/elementor-banner-widget.php:150
+#: elementor/addons/elementor-banner-widget.php:187
+#: elementor/addons/elementor-blog-post-widget.php:123
+#: elementor/addons/elementor-pricing-widget.php:140
+#: elementor/addons/elementor-service-grid-widget.php:234
+#: elementor/addons/elementor-theme-button-widget.php:96
+#: elementor/addons/elementor-theme-image-box-widget.php:183
+msgid "Button"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:112
+#: elementor/addons/elementor-banner-slider-widget.php:113
+#: elementor/addons/elementor-banner-slider-widget.php:142
+#: elementor/addons/elementor-banner-widget.php:155
+#: elementor/addons/elementor-banner-widget.php:192
+#: elementor/addons/elementor-blog-post-widget.php:128
+#: elementor/addons/elementor-pricing-widget.php:145
+#: elementor/addons/elementor-theme-button-widget.php:101
+#: elementor/addons/elementor-theme-image-box-widget.php:188
+msgid "Enter your button text"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:113
+#: elementor/addons/elementor-banner-slider-widget.php:114
+#: elementor/addons/elementor-banner-slider-widget.php:143
+#: elementor/addons/elementor-banner-widget.php:156
+#: elementor/addons/elementor-banner-widget.php:193
+#: elementor/addons/elementor-blog-post-widget.php:129
+#: elementor/addons/elementor-pricing-widget.php:146
+#: elementor/addons/elementor-service-grid-widget.php:240
+#: elementor/addons/elementor-theme-button-widget.php:102
+#: elementor/addons/elementor-theme-image-box-widget.php:189
+#: inc/theme-core-excerpt.php:54
+msgid "Read More"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:120
+#: elementor/addons/elementor-banner-slider-widget.php:121
+#: elementor/addons/elementor-banner-widget.php:200
+#: elementor/addons/elementor-pricing-widget.php:154
+#: elementor/addons/elementor-project-grid-widget.php:168
+#: elementor/addons/elementor-service-category-widget.php:126
+#: elementor/addons/elementor-service-download-widget.php:126
+#: elementor/addons/elementor-service-grid-widget.php:246
+#: elementor/addons/elementor-team-grid-widget.php:141
+#: elementor/addons/elementor-team-grid-widget.php:212
+#: elementor/addons/elementor-theme-button-widget.php:109
+msgid "Button Url"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:122
+#: elementor/addons/elementor-banner-slider-widget.php:123
+#: elementor/addons/elementor-banner-slider-widget.php:152
+#: elementor/addons/elementor-banner-widget.php:136
+#: elementor/addons/elementor-banner-widget.php:202
+#: elementor/addons/elementor-pricing-widget.php:156
+#: elementor/addons/elementor-project-grid-widget.php:170
+#: elementor/addons/elementor-service-category-widget.php:128
+#: elementor/addons/elementor-service-download-widget.php:128
+#: elementor/addons/elementor-service-grid-widget.php:248
+#: elementor/addons/elementor-team-grid-widget.php:143
+#: elementor/addons/elementor-team-grid-widget.php:214
+#: elementor/addons/elementor-theme-button-widget.php:111
+#: elementor/addons/elementor-theme-image-box-widget.php:168
+msgid "https://your-link.com"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:136
+#: elementor/addons/elementor-about-counter-widget.php:157
+#: elementor/addons/elementor-about-counter-widget.php:178
+#: elementor/addons/elementor-about-counter-widget.php:223
+#: elementor/addons/elementor-about-counter-widget.php:263
+#: elementor/addons/elementor-banner-slider-widget.php:255
+#: elementor/addons/elementor-banner-widget.php:92
+#: elementor/addons/elementor-banner-widget.php:113
+#: elementor/addons/elementor-pricing-widget.php:83
+#: elementor/addons/elementor-project-grid-widget.php:196
+#: elementor/addons/elementor-service-grid-widget.php:146
+#: elementor/addons/elementor-service-grid-widget.php:162
+#: elementor/addons/elementor-service-grid-widget.php:178
+#: elementor/addons/elementor-service-grid-widget.php:194
+#: elementor/addons/elementor-team-grid-widget.php:96
+#: elementor/addons/elementor-testimonials-widget.php:122
+#: elementor/addons/elementor-testimonials-widget.php:145
+#: elementor/addons/elementor-testimonials-widget.php:168
+#: elementor/addons/elementor-testimonials-widget.php:238
+#: elementor/addons/elementor-testimonials-widget.php:254
+#: elementor/addons/elementor-testimonials-widget.php:270
+#: elementor/addons/elementor-theme-counter-widget.php:106
+#: elementor/addons/elementor-theme-image-box-widget.php:97
+#: elementor/addons/elementor-theme-image-box-widget.php:120
+#: elementor/addons/elementor-theme-image-box-widget.php:143
+#: wp-widgets/theme-author-widget.php:24
+msgid "Image"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:145
+#: elementor/addons/elementor-about-counter-widget.php:166
+#: elementor/addons/elementor-about-counter-widget.php:187
+#: elementor/addons/elementor-banner-slider-widget.php:175
+#: elementor/addons/elementor-banner-slider-widget.php:196
+#: elementor/addons/elementor-banner-slider-widget.php:217
+#: elementor/addons/elementor-banner-widget.php:101
+#: elementor/addons/elementor-banner-widget.php:122
+#: elementor/addons/elementor-pricing-widget.php:92
+#: elementor/addons/elementor-pricing-widget.php:179
+#: elementor/addons/elementor-team-grid-widget.php:105
+#: elementor/addons/elementor-testimonials-widget.php:132
+#: elementor/addons/elementor-testimonials-widget.php:155
+#: elementor/addons/elementor-testimonials-widget.php:178
+#: elementor/addons/elementor-theme-image-box-widget.php:107
+#: elementor/addons/elementor-theme-image-box-widget.php:130
+#: elementor/addons/elementor-theme-image-box-widget.php:153
+msgid "Alt text"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:150
+#: elementor/addons/elementor-about-counter-widget.php:171
+#: elementor/addons/elementor-about-counter-widget.php:192
+#: elementor/addons/elementor-banner-slider-widget.php:101
+#: elementor/addons/elementor-banner-slider-widget.php:180
+#: elementor/addons/elementor-banner-slider-widget.php:201
+#: elementor/addons/elementor-banner-slider-widget.php:222
+#: elementor/addons/elementor-banner-widget.php:106
+#: elementor/addons/elementor-banner-widget.php:127
+#: elementor/addons/elementor-banner-widget.php:180
+#: elementor/addons/elementor-pricing-widget.php:97
+#: elementor/addons/elementor-pricing-widget.php:133
+#: elementor/addons/elementor-pricing-widget.php:184
+#: elementor/addons/elementor-team-grid-widget.php:110
+#: elementor/addons/elementor-testimonials-widget.php:137
+#: elementor/addons/elementor-testimonials-widget.php:160
+#: elementor/addons/elementor-testimonials-widget.php:183
+#: elementor/addons/elementor-theme-image-box-widget.php:112
+#: elementor/addons/elementor-theme-image-box-widget.php:135
+#: elementor/addons/elementor-theme-image-box-widget.php:158
+msgid "Enter Your Text"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:203
+#: elementor/addons/elementor-banner-slider-widget.php:236
+#: elementor/addons/elementor-project-info-widget.php:99
+#: elementor/addons/elementor-service-category-widget.php:99
+#: elementor/addons/elementor-service-download-widget.php:99
+#: elementor/addons/elementor-service-grid-widget.php:127
+#: elementor/addons/elementor-testimonials-widget.php:195
+#: elementor/addons/elementor-theme-counter-widget.php:87
+msgid "Block"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:214
+#: elementor/addons/elementor-testimonials-widget.php:206
+msgid "Projects Completed"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:232
+#: elementor/addons/elementor-about-counter-widget.php:271
+#: elementor/addons/elementor-project-grid-widget.php:205
+#: elementor/addons/elementor-service-grid-widget.php:154
+#: elementor/addons/elementor-service-grid-widget.php:170
+#: elementor/addons/elementor-service-grid-widget.php:186
+#: elementor/addons/elementor-service-grid-widget.php:202
+#: elementor/addons/elementor-testimonials-widget.php:246
+#: elementor/addons/elementor-testimonials-widget.php:262
+#: elementor/addons/elementor-testimonials-widget.php:278
+msgid "Image Text"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:247
+#: elementor/addons/elementor-project-grid-widget.php:159
+#: elementor/addons/elementor-theme-counter-widget.php:131
+msgid "Title 2"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:254
+msgid "Title 3"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:279
+msgid "Title 4"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:286
+msgid "Title 5"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:293
+msgid "Title 6"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:301
+msgid "Style Options"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:304
+#: elementor/addons/elementor-project-grid-widget.php:122
+msgid "Style 1"
+msgstr ""
+
+#: elementor/addons/elementor-about-counter-widget.php:305
+#: elementor/addons/elementor-project-grid-widget.php:123
+msgid "Style 2"
+msgstr ""
+
+#: elementor/addons/elementor-banner-slider-widget.php:33
+#: elementor/addons/elementor-banner-slider-widget.php:76
+msgid "Banner Slider"
+msgstr ""
+
+#: elementor/addons/elementor-banner-slider-widget.php:96
+#: elementor/addons/elementor-banner-widget.php:175
+#: elementor/addons/elementor-pricing-widget.php:128
+msgid "Description Text"
+msgstr ""
+
+#: elementor/addons/elementor-banner-slider-widget.php:137
+msgid "Play Button"
+msgstr ""
+
+#: elementor/addons/elementor-banner-slider-widget.php:150
+#: elementor/addons/elementor-banner-widget.php:134
+#: elementor/addons/elementor-theme-image-box-widget.php:166
+msgid "Video Url"
+msgstr ""
+
+#: elementor/addons/elementor-banner-slider-widget.php:166
+#: elementor/addons/elementor-banner-slider-widget.php:187
+#: elementor/addons/elementor-banner-slider-widget.php:208
+msgid "Shape Image"
+msgstr ""
+
+#: elementor/addons/elementor-banner-slider-widget.php:247
+#: elementor/addons/elementor-progress-bar-widget.php:87
+#: elementor/addons/elementor-project-grid-widget.php:112
+#: elementor/addons/elementor-project-info-widget.php:110
+#: elementor/addons/elementor-service-category-widget.php:110
+#: elementor/addons/elementor-service-download-widget.php:110
+#: elementor/addons/elementor-service-grid-widget.php:138
+#: elementor/addons/elementor-team-grid-widget.php:197
+#: elementor/addons/elementor-theme-accordion-widget.php:87
+#: elementor/addons/elementor-theme-counter-widget.php:98
+msgid "Hello World"
+msgstr ""
+
+#: elementor/addons/elementor-banner-slider-widget.php:264
+#: elementor/addons/elementor-theme-counter-widget.php:115
+msgid "Image Alt Text"
+msgstr ""
+
+#: elementor/addons/elementor-banner-widget.php:33
+#: elementor/addons/elementor-banner-widget.php:76
+msgid "Banner"
+msgstr ""
+
+#: elementor/addons/elementor-banner-widget.php:83
+#: elementor/addons/elementor-project-grid-widget.php:132
+msgid "Background image"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:40
+msgid "Blog Post"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:87
+msgid "General Settings"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:95
+#: elementor/addons/elementor-contact-form-widget.php:83
+#: elementor/addons/elementor-heading-title-widget.php:83
+#: elementor/addons/elementor-project-grid-widget.php:83
+#: elementor/addons/elementor-project-grid-widget.php:119
+#: elementor/addons/elementor-service-grid-widget.php:83
+#: elementor/addons/elementor-team-grid-widget.php:83
+#: elementor/addons/elementor-testimonials-widget.php:83
+#: elementor/addons/elementor-theme-button-widget.php:83
+#: elementor/addons/elementor-theme-image-box-widget.php:83
+msgid "Select Style"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:99
+#: elementor/addons/elementor-contact-form-widget.php:87
+#: elementor/addons/elementor-heading-title-widget.php:87
+#: elementor/addons/elementor-project-grid-widget.php:87
+#: elementor/addons/elementor-service-grid-widget.php:87
+#: elementor/addons/elementor-team-grid-widget.php:87
+#: elementor/addons/elementor-testimonials-widget.php:87
+#: elementor/addons/elementor-theme-button-widget.php:87
+#: elementor/addons/elementor-theme-image-box-widget.php:87
+msgid "Style One"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:100
+#: elementor/addons/elementor-contact-form-widget.php:88
+#: elementor/addons/elementor-heading-title-widget.php:88
+#: elementor/addons/elementor-project-grid-widget.php:88
+#: elementor/addons/elementor-service-grid-widget.php:88
+#: elementor/addons/elementor-team-grid-widget.php:88
+#: elementor/addons/elementor-testimonials-widget.php:88
+#: elementor/addons/elementor-theme-button-widget.php:88
+#: elementor/addons/elementor-theme-image-box-widget.php:88
+msgid "Style Two"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:101
+#: elementor/addons/elementor-heading-title-widget.php:89
+#: elementor/addons/elementor-project-grid-widget.php:89
+#: elementor/addons/elementor-service-grid-widget.php:89
+#: elementor/addons/elementor-theme-image-box-widget.php:89
+msgid "Style Three"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:107
+msgid "Blog Grid"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:110
+msgid "col-lg-2"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:111
+msgid "col-lg-3"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:112
+msgid "col-lg-4"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:113
+msgid "col-lg-6"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:114
+msgid "col-lg-12"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:117
+msgid "Select Blog Grid"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:136
+msgid "Word Limit"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:139
+msgid "Set the number of words to display from the post content."
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:146
+msgid "More Text"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:149
+msgid ""
+"Set the text to append after the trimmed words, e.g., \"Read More\". Leave "
+"blank for no text."
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:154
+msgid "Total Posts"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:157
+#: elementor/addons/elementor-blog-post-widget.php:163
+msgid "enter how many post you want in masonry , enter -1 for unlimited post."
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:160
+msgid "Offset Posts"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:166
+#: wp-widgets/theme-post-category-widget.php:78
+msgid "Category"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:170
+msgid "Select category as you want, leave it blank for all categories"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:174
+#: wp-widgets/theme-post-category-widget.php:132
+#: wp-widgets/theme-post-tags-menu.php:125
+#: wp-widgets/theme-recent-post-title-widget.php:163
+#: wp-widgets/theme-recent-post-widget.php:171
+msgid "Order"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:177
+msgid "Ascending"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:178
+#: wp-widgets/theme-post-category-widget.php:94
+#: wp-widgets/theme-post-tags-menu.php:87
+#: wp-widgets/theme-recent-post-title-widget.php:113
+#: wp-widgets/theme-recent-post-widget.php:121
+msgid "Descending"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:181
+#: elementor/addons/elementor-blog-post-widget.php:194
+msgid "select order"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:184
+#: wp-widgets/theme-post-category-widget.php:145
+#: wp-widgets/theme-post-tags-menu.php:138
+#: wp-widgets/theme-recent-post-title-widget.php:181
+#: wp-widgets/theme-recent-post-widget.php:189
+msgid "OrderBy"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:187
+#: wp-widgets/theme-post-category-widget.php:97
+#: wp-widgets/theme-post-tags-menu.php:90
+#: wp-widgets/theme-recent-post-title-widget.php:117
+#: wp-widgets/theme-recent-post-widget.php:125
+msgid "ID"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:190
+#: wp-widgets/theme-post-category-widget.php:100
+#: wp-widgets/theme-post-tags-menu.php:93
+#: wp-widgets/theme-recent-post-title-widget.php:120
+#: wp-widgets/theme-recent-post-widget.php:128
+msgid "Random"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:191
+msgid "Most Comments"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:200
+msgid "Image Display"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:202
+#: elementor/addons/elementor-blog-post-widget.php:212
+msgid "show/hide description"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:210
+msgid "Thumb Date Show/Hide"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:219
+msgid "Pagination"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:221
+msgid "you can set yes to show pagination."
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:230
+msgid "Category Display"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:232
+msgid "Show  Or Hide Category."
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:239
+msgid "Tags Display"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:241
+msgid "Show  Or Hide Tags."
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:248
+msgid "Pagination Alignment"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:251
+msgid "Left Align"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:252
+msgid "Center Align"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:253
+msgid "Right Align"
+msgstr ""
+
+#: elementor/addons/elementor-blog-post-widget.php:255
+msgid "you can set pagination alignment."
+msgstr ""
+
+#: elementor/addons/elementor-contact-form-widget.php:33
+#: elementor/addons/elementor-contact-form-widget.php:76
+#: wp-widgets/theme-request-form-widget.php:35
+msgid "Contact Form"
+msgstr ""
+
+#: elementor/addons/elementor-contact-form-widget.php:109
+msgid "Contact Form 7 Url"
+msgstr ""
+
+#: elementor/addons/elementor-contact-form-widget.php:114
+msgid "Enter your Contact Form 7 Url"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:33
+#: elementor/addons/elementor-heading-title-widget.php:76
+msgid "Heading Title"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:129
+msgid "Section Sub Title Setting"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:138
+msgid "Show Section Sub Title"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:142
+#: elementor/addons/elementor-service-category-widget.php:142
+#: elementor/addons/elementor-team-grid-widget.php:159
+msgid "Show"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:146
+#: elementor/addons/elementor-service-category-widget.php:143
+#: elementor/addons/elementor-team-grid-widget.php:160
+msgid "Hide"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:161
+msgid "Alignment"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:165
+#: lib/codestar-framework/fields/typography/typography.php:171
+msgid "Left"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:173
+#: lib/codestar-framework/fields/typography/typography.php:173
+msgid "Right"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:190
+msgid "Margin"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:204
+msgid "Padding"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:220
+msgid "Typography"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:229
+#: lib/codestar-framework/fields/background/background.php:278
+msgid "Color"
+msgstr ""
+
+#: elementor/addons/elementor-heading-title-widget.php:242
+msgid "Background Color"
+msgstr ""
+
+#: elementor/addons/elementor-pricing-widget.php:33
+msgid "Pricing Widgets"
+msgstr ""
+
+#: elementor/addons/elementor-pricing-widget.php:76
+msgid "Pricing"
+msgstr ""
+
+#: elementor/addons/elementor-pricing-widget.php:170
+msgid "Tag image"
+msgstr ""
+
+#: elementor/addons/elementor-pricing-widget.php:191
+msgid "Active Options"
+msgstr ""
+
+#: elementor/addons/elementor-pricing-widget.php:195
+msgid "Inactive"
+msgstr ""
+
+#: elementor/addons/elementor-progress-bar-widget.php:33
+msgid "Theme Progress Bar"
+msgstr ""
+
+#: elementor/addons/elementor-progress-bar-widget.php:76
+msgid "Progress Bar Repeater"
+msgstr ""
+
+#: elementor/addons/elementor-progress-bar-widget.php:105
+#: elementor/addons/elementor-theme-accordion-widget.php:105
+msgid "Progress Value"
+msgstr ""
+
+#: elementor/addons/elementor-project-grid-widget.php:33
+#: elementor/addons/elementor-project-grid-widget.php:76
+msgid "Project Grid"
+msgstr ""
+
+#: elementor/addons/elementor-project-grid-widget.php:101
+msgid "Project Grid Block"
+msgstr ""
+
+#: elementor/addons/elementor-project-grid-widget.php:124
+msgid "Style 3"
+msgstr ""
+
+#: elementor/addons/elementor-project-grid-widget.php:150
+#: elementor/addons/elementor-service-grid-widget.php:210
+#: elementor/addons/elementor-testimonials-widget.php:222
+#: elementor/addons/elementor-theme-counter-widget.php:140
+msgid "Subtitle"
+msgstr ""
+
+#: elementor/addons/elementor-project-grid-widget.php:183
+#: elementor/addons/elementor-team-grid-widget.php:169
+msgid "Hover Options"
+msgstr ""
+
+#: elementor/addons/elementor-project-grid-widget.php:186
+#: elementor/addons/elementor-team-grid-widget.php:172
+msgid "Hover Active"
+msgstr ""
+
+#: elementor/addons/elementor-project-grid-widget.php:187
+#: elementor/addons/elementor-team-grid-widget.php:173
+msgid "Hover Inactive"
+msgstr ""
+
+#: elementor/addons/elementor-project-info-widget.php:33
+#: elementor/addons/elementor-project-info-widget.php:76
+msgid "Project Info"
+msgstr ""
+
+#: elementor/addons/elementor-service-category-widget.php:140
+msgid "Show Active"
+msgstr ""
+
+#: elementor/addons/elementor-service-download-widget.php:33
+#: elementor/addons/elementor-service-download-widget.php:76
+msgid "Service Download"
+msgstr ""
+
+#: elementor/addons/elementor-service-grid-widget.php:33
+#: elementor/addons/elementor-service-grid-widget.php:76
+msgid "Service Grid"
+msgstr ""
+
+#: elementor/addons/elementor-service-grid-widget.php:239
+msgid "Enter your Button Title"
+msgstr ""
+
+#: elementor/addons/elementor-team-grid-widget.php:33
+#: elementor/addons/elementor-team-grid-widget.php:76
+msgid "Team Grid"
+msgstr ""
+
+#: elementor/addons/elementor-team-grid-widget.php:157
+msgid "Show Socials Icon"
+msgstr ""
+
+#: elementor/addons/elementor-team-grid-widget.php:186
+msgid "Team Grid Block"
+msgstr ""
+
+#: elementor/addons/elementor-team-grid-widget.php:205
+msgid "Enter The icons"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:33
+msgid "Testimonials Widget"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:76
+msgid "Testimonials"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:286
+msgid "Select Rating"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:290
+msgid "Rating One"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:291
+msgid "Rating Two"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:292
+msgid "Rating Three"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:293
+msgid "Rating Four"
+msgstr ""
+
+#: elementor/addons/elementor-testimonials-widget.php:294
+msgid "Rating Five"
+msgstr ""
+
+#: elementor/addons/elementor-theme-accordion-widget.php:33
+msgid "Theme Accordion"
+msgstr ""
+
+#: elementor/addons/elementor-theme-accordion-widget.php:76
+msgid "Accordion Repeater"
+msgstr ""
+
+#: elementor/addons/elementor-theme-button-widget.php:33
+#: elementor/addons/elementor-theme-button-widget.php:76
+msgid "Theme Button"
+msgstr ""
+
+#: elementor/addons/elementor-theme-counter-widget.php:33
+#: elementor/addons/elementor-theme-counter-widget.php:76
+msgid "Theme Counter"
+msgstr ""
+
+#: elementor/addons/elementor-theme-counter-widget.php:147
+msgid "Column"
+msgstr ""
+
+#: elementor/addons/elementor-theme-counter-widget.php:151
+msgid "One Column"
+msgstr ""
+
+#: elementor/addons/elementor-theme-counter-widget.php:152
+msgid "Two Column"
+msgstr ""
+
+#: elementor/addons/elementor-theme-counter-widget.php:153
+msgid "Three Column"
+msgstr ""
+
+#: elementor/addons/elementor-theme-counter-widget.php:154
+msgid "Four Column"
+msgstr ""
+
+#: elementor/addons/elementor-theme-counter-widget.php:155
+msgid "Six Column"
+msgstr ""
+
+#: elementor/addons/elementor-theme-image-box-widget.php:33
+#: elementor/addons/elementor-theme-image-box-widget.php:76
+msgid "Theme Image Box"
+msgstr ""
+
+#: elementor/elementor-widget-init.php:60
+msgid "Charifund Widgets"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:201
+msgid "Pages:"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:235
+#: inc/theme-core-helper-functions.php:256
+msgid " of "
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:295
+msgid "By "
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:312
+msgid "Tags: "
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:323
+msgid "Prev Post"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:324
+msgid "Next Post"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:510
+msgid "No contact form found"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:574
+msgid "Free"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:598
+msgid "Get Enrolled"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:609
+msgid "Enroll Now"
+msgstr ""
+
+#: inc/theme-core-helper-functions.php:663
+#: inc/theme-core-helper-functions.php:665
+msgid "Views"
+msgstr ""
+
+#: inc/theme-core-init.php:335
+msgid "Icomoon Icon"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:169
+msgid "Error while saving the changes."
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:229
+msgid "Settings successfully imported."
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:241
+#: lib/codestar-framework/classes/admin-options.class.php:257
+msgid "Default settings restored."
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:328
+msgid "Settings saved."
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:509
+msgid "You have unsaved changes, save your changes!"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:511
+msgid "show all settings"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:513
+#: lib/codestar-framework/fields/icon/icon.php:57
+#: lib/codestar-framework/fields/map/map.php:23
+msgid "Search..."
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:516
+#: lib/codestar-framework/classes/admin-options.class.php:639
+msgid "Save"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:516
+#: lib/codestar-framework/classes/admin-options.class.php:639
+msgid "Saving..."
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:517
+#: lib/codestar-framework/classes/admin-options.class.php:640
+msgid "Reset Section"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:517
+#: lib/codestar-framework/classes/admin-options.class.php:640
+msgid "Are you sure to reset this section options?"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:518
+#: lib/codestar-framework/classes/admin-options.class.php:641
+msgid "Reset All"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:518
+#: lib/codestar-framework/classes/admin-options.class.php:641
+#: lib/codestar-framework/classes/comment-options.class.php:201
+#: lib/codestar-framework/classes/metabox-options.class.php:278
+#: lib/codestar-framework/fields/backup/backup.php:31
+msgid "Reset"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:518
+#: lib/codestar-framework/classes/admin-options.class.php:641
+msgid "Are you sure you want to reset all settings to default values?"
+msgstr ""
+
+#: lib/codestar-framework/classes/admin-options.class.php:616
+#: lib/codestar-framework/classes/comment-options.class.php:184
+#: lib/codestar-framework/classes/metabox-options.class.php:261
+#: lib/codestar-framework/fields/button_set/button_set.php:56
+#: lib/codestar-framework/fields/checkbox/checkbox.php:82
+#: lib/codestar-framework/fields/radio/radio.php:75
+#: lib/codestar-framework/fields/select/select.php:113
+#: lib/codestar-framework/functions/actions.php:41
+msgid "No data available."
+msgstr ""
+
+#: lib/codestar-framework/classes/comment-options.class.php:202
+#: lib/codestar-framework/classes/metabox-options.class.php:279
+msgid "update post"
+msgstr ""
+
+#: lib/codestar-framework/classes/comment-options.class.php:202
+#: lib/codestar-framework/classes/metabox-options.class.php:279
+msgid "Cancel"
+msgstr ""
+
+#: lib/codestar-framework/classes/setup.class.php:606
+msgid "Are you sure?"
+msgstr ""
+
+#: lib/codestar-framework/classes/setup.class.php:607
+#, php-format
+msgid "Please enter %s or more characters"
+msgstr ""
+
+#: lib/codestar-framework/classes/setup.class.php:608
+msgid "Searching..."
+msgstr ""
+
+#: lib/codestar-framework/classes/setup.class.php:609
+msgid "No results found."
+msgstr ""
+
+#: lib/codestar-framework/classes/setup.class.php:710
+msgid "Oops! Not allowed."
+msgstr ""
+
+#: lib/codestar-framework/classes/setup.class.php:778
+#: lib/codestar-framework/classes/setup.class.php:782
+msgid "Field not found!"
+msgstr ""
+
+#: lib/codestar-framework/classes/shortcode-options.class.php:210
+#: lib/codestar-framework/fields/group/group.php:23
+msgid "Add New"
+msgstr ""
+
+#: lib/codestar-framework/classes/shortcode-options.class.php:247
+#: lib/codestar-framework/functions/actions.php:16
+#: lib/codestar-framework/functions/actions.php:68
+#: lib/codestar-framework/functions/actions.php:106
+#: lib/codestar-framework/functions/actions.php:141
+#: lib/codestar-framework/functions/actions.php:170
+msgid "Error: Invalid nonce verification."
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:36
+#: lib/codestar-framework/fields/media/media.php:59
+msgid "Not selected"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:72
+#: lib/codestar-framework/fields/date/date.php:31
+#: lib/codestar-framework/fields/datetime/datetime.php:36
+msgid "From"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:90
+#: lib/codestar-framework/fields/date/date.php:32
+#: lib/codestar-framework/fields/datetime/datetime.php:37
+msgid "To"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:108
+msgid "Direction"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:114
+msgid "Gradient Direction"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:115
+msgid "&#8659; top to bottom"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:116
+msgid "&#8658; left to right"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:117
+msgid "&#8664; corner top to right"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:118
+msgid "&#8665; corner top to left"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:161
+msgid "Background Position"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:162
+msgid "Left Top"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:163
+msgid "Left Center"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:164
+msgid "Left Bottom"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:165
+msgid "Center Top"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:166
+msgid "Center Center"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:167
+msgid "Center Bottom"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:168
+msgid "Right Top"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:169
+msgid "Right Center"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:170
+msgid "Right Bottom"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:184
+msgid "Background Repeat"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:185
+msgid "Repeat"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:186
+msgid "No Repeat"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:187
+msgid "Repeat Horizontally"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:188
+msgid "Repeat Vertically"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:202
+msgid "Background Attachment"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:203
+msgid "Scroll"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:204
+msgid "Fixed"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:218
+msgid "Background Size"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:219
+msgid "Cover"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:220
+msgid "Contain"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:221
+msgid "Auto"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:235
+msgid "Background Origin"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:236
+#: lib/codestar-framework/fields/background/background.php:254
+msgid "Padding Box"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:237
+#: lib/codestar-framework/fields/background/background.php:253
+msgid "Border Box"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:238
+#: lib/codestar-framework/fields/background/background.php:255
+msgid "Content Box"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:252
+msgid "Background Clip"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:269
+msgid "Background Blend Mode"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:270
+#: lib/codestar-framework/fields/link_color/link_color.php:36
+#: lib/codestar-framework/fields/typography/typography.php:186
+msgid "Normal"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:271
+msgid "Multiply"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:272
+msgid "Screen"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:273
+msgid "Overlay"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:274
+msgid "Darken"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:275
+msgid "Lighten"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:276
+msgid "Color Dodge"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:277
+msgid "Saturation"
+msgstr ""
+
+#: lib/codestar-framework/fields/background/background.php:279
+msgid "Luminosity"
+msgstr ""
+
+#: lib/codestar-framework/fields/backup/backup.php:26
+msgid "Import"
+msgstr ""
+
+#: lib/codestar-framework/fields/backup/backup.php:29
+msgid "Export & Download"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:25
+#: lib/codestar-framework/fields/spacing/spacing.php:25
+msgid "top"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:26
+#: lib/codestar-framework/fields/spacing/spacing.php:26
+msgid "right"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:27
+#: lib/codestar-framework/fields/spacing/spacing.php:27
+msgid "bottom"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:28
+#: lib/codestar-framework/fields/spacing/spacing.php:28
+msgid "left"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:29
+#: lib/codestar-framework/fields/spacing/spacing.php:29
+msgid "all"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:51
+#: lib/codestar-framework/fields/typography/typography.php:214
+msgid "Solid"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:52
+#: lib/codestar-framework/fields/typography/typography.php:217
+msgid "Dashed"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:53
+#: lib/codestar-framework/fields/typography/typography.php:216
+msgid "Dotted"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:54
+#: lib/codestar-framework/fields/typography/typography.php:215
+msgid "Double"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:55
+msgid "Inset"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:56
+msgid "Outset"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:57
+msgid "Groove"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:58
+msgid "ridge"
+msgstr ""
+
+#: lib/codestar-framework/fields/border/border.php:59
+#: lib/codestar-framework/fields/typography/typography.php:199
+#: lib/codestar-framework/fields/typography/typography.php:213
+msgid "None"
+msgstr ""
+
+#: lib/codestar-framework/fields/checkbox/checkbox.php:23
+msgid "Check/Uncheck All"
+msgstr ""
+
+#: lib/codestar-framework/fields/dimensions/dimensions.php:22
+msgid "width"
+msgstr ""
+
+#: lib/codestar-framework/fields/dimensions/dimensions.php:23
+msgid "height"
+msgstr ""
+
+#: lib/codestar-framework/fields/gallery/gallery.php:20
+msgid "Add Gallery"
+msgstr ""
+
+#: lib/codestar-framework/fields/gallery/gallery.php:21
+msgid "Edit Gallery"
+msgstr ""
+
+#: lib/codestar-framework/fields/gallery/gallery.php:22
+msgid "Clear"
+msgstr ""
+
+#: lib/codestar-framework/fields/group/group.php:41
+#: lib/codestar-framework/fields/repeater/repeater.php:27
+msgid "Error: Field ID conflict."
+msgstr ""
+
+#: lib/codestar-framework/fields/group/group.php:52
+#: lib/codestar-framework/fields/group/group.php:107
+#: lib/codestar-framework/fields/repeater/repeater.php:48
+#: lib/codestar-framework/fields/repeater/repeater.php:76
+msgid "Are you sure to delete this item?"
+msgstr ""
+
+#: lib/codestar-framework/fields/group/group.php:141
+#: lib/codestar-framework/fields/repeater/repeater.php:89
+msgid "You cannot add more."
+msgstr ""
+
+#: lib/codestar-framework/fields/group/group.php:142
+#: lib/codestar-framework/fields/repeater/repeater.php:90
+msgid "You cannot remove more."
+msgstr ""
+
+#: lib/codestar-framework/fields/icon/icon.php:20
+#: lib/codestar-framework/fields/icon/icon.php:53
+msgid "Add Icon"
+msgstr ""
+
+#: lib/codestar-framework/fields/icon/icon.php:21
+msgid "Remove Icon"
+msgstr ""
+
+#: lib/codestar-framework/fields/link/link.php:20
+msgid "Add Link"
+msgstr ""
+
+#: lib/codestar-framework/fields/link/link.php:21
+msgid "Edit Link"
+msgstr ""
+
+#: lib/codestar-framework/fields/link/link.php:22
+msgid "Remove Link"
+msgstr ""
+
+#: lib/codestar-framework/fields/link_color/link_color.php:37
+msgid "Hover"
+msgstr ""
+
+#: lib/codestar-framework/fields/link_color/link_color.php:39
+msgid "Visited"
+msgstr ""
+
+#: lib/codestar-framework/fields/link_color/link_color.php:40
+msgid "Focus"
+msgstr ""
+
+#: lib/codestar-framework/fields/map/map.php:24
+msgid "Latitude"
+msgstr ""
+
+#: lib/codestar-framework/fields/map/map.php:25
+msgid "Longitude"
+msgstr ""
+
+#: lib/codestar-framework/fields/media/media.php:25
+#: lib/codestar-framework/fields/upload/upload.php:24
+msgid "Upload"
+msgstr ""
+
+#: lib/codestar-framework/fields/media/media.php:26
+#: lib/codestar-framework/fields/upload/upload.php:25
+msgid "Remove"
+msgstr ""
+
+#: lib/codestar-framework/fields/sorter/sorter.php:21
+msgid "Enabled"
+msgstr ""
+
+#: lib/codestar-framework/fields/sorter/sorter.php:22
+msgid "Disabled"
+msgstr ""
+
+#: lib/codestar-framework/fields/switcher/switcher.php:20
+msgid "On"
+msgstr ""
+
+#: lib/codestar-framework/fields/switcher/switcher.php:21
+msgid "Off"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:96
+msgid "Font Family"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:97
+msgid "Select a font"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:105
+msgid "Backup Font Family"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:119
+#: lib/codestar-framework/fields/typography/typography.php:132
+#: lib/codestar-framework/fields/typography/typography.php:145
+#: lib/codestar-framework/fields/typography/typography.php:160
+#: lib/codestar-framework/fields/typography/typography.php:176
+#: lib/codestar-framework/fields/typography/typography.php:189
+#: lib/codestar-framework/fields/typography/typography.php:203
+#: lib/codestar-framework/fields/typography/typography.php:221
+msgid "Default"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:130
+msgid "Font Style"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:144
+#: lib/codestar-framework/fields/typography/typography.php:145
+msgid "Load Extra Styles"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:158
+msgid "Subset"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:168
+msgid "Text Align"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:170
+msgid "Inherit"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:174
+msgid "Justify"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:175
+msgid "Initial"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:184
+msgid "Font Variant"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:187
+msgid "Small Caps"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:188
+msgid "All Small Caps"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:197
+msgid "Text Transform"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:200
+msgid "Capitalize"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:201
+msgid "Uppercase"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:202
+msgid "Lowercase"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:211
+msgid "Text Decoration"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:218
+msgid "Wavy"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:219
+msgid "Overline"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:220
+msgid "Line-through"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:233
+msgid "Font Size"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:245
+msgid "Line Height"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:257
+msgid "Letter Spacing"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:269
+msgid "Word Spacing"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:284
+msgid "Font Color"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:295
+msgid "Custom Style"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:362
+msgid "Custom Web Fonts"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:368
+msgid "Safe Web Fonts"
+msgstr ""
+
+#: lib/codestar-framework/fields/typography/typography.php:388
+msgid "Google Web Fonts"
+msgstr ""
+
+#: lib/codestar-framework/functions/actions.php:72
+#: lib/codestar-framework/functions/actions.php:110
+msgid "Error: Invalid key."
+msgstr ""
+
+#: lib/codestar-framework/functions/actions.php:114
+msgid "Error: The response is not a valid JSON response."
+msgstr ""
+
+#: lib/codestar-framework/functions/actions.php:174
+msgid "Error: Invalid term ID."
+msgstr ""
+
+#: lib/codestar-framework/functions/actions.php:180
+msgid "Error: You do not have permission to do that."
+msgstr ""
+
+#: lib/codestar-framework/functions/validate.php:14
+#: lib/codestar-framework/functions/validate.php:86
+msgid "Please enter a valid email address."
+msgstr ""
+
+#: lib/codestar-framework/functions/validate.php:32
+#: lib/codestar-framework/functions/validate.php:106
+msgid "Please enter a valid number."
+msgstr ""
+
+#: lib/codestar-framework/functions/validate.php:50
+#: lib/codestar-framework/functions/validate.php:126
+msgid "This field is required."
+msgstr ""
+
+#: lib/codestar-framework/functions/validate.php:68
+#: lib/codestar-framework/functions/validate.php:146
+msgid "Please enter a valid URL."
+msgstr ""
+
+#: lib/codestar-framework/views/about.php:14
+#: lib/codestar-framework/views/about.php:20
+#: lib/codestar-framework/views/about.php:28
+#: lib/codestar-framework/views/about.php:34
+#: lib/codestar-framework/views/about.php:40
+#: lib/codestar-framework/views/about.php:48
+#: lib/codestar-framework/views/about.php:54
+#: lib/codestar-framework/views/about.php:60
+msgid "active"
+msgstr ""
+
+#: lib/codestar-framework/views/about.php:14
+#: lib/codestar-framework/views/about.php:20
+#: lib/codestar-framework/views/about.php:28
+#: lib/codestar-framework/views/about.php:34
+#: lib/codestar-framework/views/about.php:40
+#: lib/codestar-framework/views/about.php:48
+#: lib/codestar-framework/views/about.php:54
+#: lib/codestar-framework/views/about.php:60
+msgid "check"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:17
+msgid "Charifund: About Me"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:19
+#: wp-widgets/theme-post-search-widget.php:19
+msgid "Display about me widget"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:24
+#: wp-widgets/theme-request-form-widget.php:29
+#: wp-widgets/theme-social-share-widget.php:24
+msgid "Enter Your Header Title"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:25
+msgid "About Me"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:30
+msgid "Upload Your Trainer Photo"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:35
+msgid "Enter Your Trainer Name"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:36
+msgid "RANDALL SCHWARTZ"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:41
+#: wp-widgets/theme-about-us-widget.php:29
+msgid "Description"
+msgstr ""
+
+#: wp-widgets/theme-about-me-widget.php:42
+msgid "Suspendisse vel nisl sed viverra tindunt. Vivamus et lobortis felis..."
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:17
+msgid "Charifund: About Us"
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:19
+msgid "Display about us widget"
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:24
+#: wp-widgets/theme-request-form-widget.php:24
+msgid "Upload Your Photo"
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:30
+msgid ""
+"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod "
+"tempor incididunt ut labore."
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:35
+msgid "Shortcode"
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:41
+#: wp-widgets/theme-contact-info-widget.php:48
+#: wp-widgets/theme-social-share-widget.php:30
+msgid "Social Icon"
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:53
+#: wp-widgets/theme-contact-info-widget.php:60
+msgid "Enter Your Url"
+msgstr ""
+
+#: wp-widgets/theme-about-us-widget.php:54
+#: wp-widgets/theme-author-widget.php:53
+#: wp-widgets/theme-contact-info-widget.php:61
+#: wp-widgets/theme-discover-company-widget.php:36
+msgid "#"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:17
+msgid "Charifund: Author"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:19
+msgid "Display Author widget"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:29
+msgid "Name"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:30
+msgid "Leslie Alexander"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:35
+#: wp-widgets/theme-contact-info-widget.php:35
+msgid "Phone"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:36
+msgid "(480) 555-0103"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:42
+msgid "Author"
+msgstr ""
+
+#: wp-widgets/theme-author-widget.php:47 wp-widgets/theme-author-widget.php:52
+msgid "author social"
+msgstr ""
+
+#: wp-widgets/theme-contact-info-widget.php:17
+msgid "Charifund: Contact Info"
+msgstr ""
+
+#: wp-widgets/theme-contact-info-widget.php:19
+msgid "Display Contact Info widget"
+msgstr ""
+
+#: wp-widgets/theme-contact-info-widget.php:29
+msgid "Location"
+msgstr ""
+
+#: wp-widgets/theme-contact-info-widget.php:30
+msgid "4517 Washington Ave. Manchester, Kentucky 39495"
+msgstr ""
+
+#: wp-widgets/theme-contact-info-widget.php:36
+msgid " (+888) 123 456 765"
+msgstr ""
+
+#: wp-widgets/theme-contact-info-widget.php:41
+msgid "Email"
+msgstr ""
+
+#: wp-widgets/theme-contact-info-widget.php:42
+msgid " infoname@mail.com"
+msgstr ""
+
+#: wp-widgets/theme-discover-company-widget.php:17
+msgid "Charifund: Discover Company"
+msgstr ""
+
+#: wp-widgets/theme-discover-company-widget.php:19
+msgid "Display Discover Company widget"
+msgstr ""
+
+#: wp-widgets/theme-discover-company-widget.php:24
+msgid "Upload Your Discover Photo"
+msgstr ""
+
+#: wp-widgets/theme-discover-company-widget.php:29
+msgid "discover btn"
+msgstr ""
+
+#: wp-widgets/theme-discover-company-widget.php:30
+msgid "Discover our company +"
+msgstr ""
+
+#: wp-widgets/theme-discover-company-widget.php:35
+msgid "discover btn url"
+msgstr ""
+
+#: wp-widgets/theme-file-download-widget.php:17
+msgid "Charifund: File Download"
+msgstr ""
+
+#: wp-widgets/theme-file-download-widget.php:19
+msgid "Display File Download widget"
+msgstr ""
+
+#: wp-widgets/theme-file-download-widget.php:25
+msgid "Download"
+msgstr ""
+
+#: wp-widgets/theme-file-download-widget.php:31
+msgid "File Download"
+msgstr ""
+
+#: wp-widgets/theme-file-download-widget.php:36
+msgid "File"
+msgstr ""
+
+#: wp-widgets/theme-file-download-widget.php:41
+msgid "File Text"
+msgstr ""
+
+#: wp-widgets/theme-file-download-widget.php:42
+msgid "Company Profile"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:17
+msgid "Charifund:  Category"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:18
+#: wp-widgets/theme-post-tags-menu.php:20
+msgid "Display  categories"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:61
+msgid " Oops, there are no category."
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:86
+msgid "Blog Category"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:87
+msgid "Packages Category"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:88
+msgid "project Category"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:89
+msgid "Courses Category"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:93
+#: wp-widgets/theme-post-tags-menu.php:86
+#: wp-widgets/theme-recent-post-title-widget.php:112
+#: wp-widgets/theme-recent-post-widget.php:120
+msgid "Acceding"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:105
+msgid "Taxonomy"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:124
+#: wp-widgets/theme-post-tags-menu.php:117
+#: wp-widgets/theme-recent-post-title-widget.php:146
+#: wp-widgets/theme-recent-post-widget.php:154
+msgid "Title:"
+msgstr ""
+
+#: wp-widgets/theme-post-category-widget.php:158
+msgid "Number"
+msgstr ""
+
+#: wp-widgets/theme-post-search-widget.php:17
+msgid "Charifund Post Search"
+msgstr ""
+
+#: wp-widgets/theme-post-search-widget.php:45
+msgid "Search here"
+msgstr ""
+
+#: wp-widgets/theme-post-tags-menu.php:19
+msgid "Charifund: Tags"
+msgstr ""
+
+#: wp-widgets/theme-post-tags-menu.php:54
+msgid " Oops, there are no tags."
+msgstr ""
+
+#: wp-widgets/theme-post-tags-menu.php:73
+msgid "Tags"
+msgstr ""
+
+#: wp-widgets/theme-post-tags-menu.php:79
+msgid "Blog"
+msgstr ""
+
+#: wp-widgets/theme-post-tags-menu.php:80
+msgid "Packages"
+msgstr ""
+
+#: wp-widgets/theme-post-tags-menu.php:82
+msgid "Courses"
+msgstr ""
+
+#: wp-widgets/theme-post-tags-menu.php:98
+msgid "Post Tags"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:22
+msgid "Charifund: Recent Posts Title"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:23
+#: wp-widgets/theme-recent-post-widget.php:23
+msgid "Display your recent posts, with a thumbnail."
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:75
+#: wp-widgets/theme-recent-post-widget.php:83
+msgid " Oops, there are no posts."
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:96
+#: wp-widgets/theme-recent-post-widget.php:104
+msgid "Recent Posts"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:104
+#: wp-widgets/theme-recent-post-widget.php:112
+msgid "Blog Post Type"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:105
+#: wp-widgets/theme-recent-post-widget.php:113
+msgid "Packages Post Type"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:106
+#: wp-widgets/theme-recent-post-widget.php:114
+msgid "project Post Type"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:107
+#: wp-widgets/theme-recent-post-widget.php:115
+msgid "Service Post Type"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:108
+#: wp-widgets/theme-recent-post-widget.php:116
+msgid "Courses Post Type"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:121
+#: wp-widgets/theme-recent-post-widget.php:129
+msgid "Most Comment"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:126
+#: wp-widgets/theme-recent-post-widget.php:134
+msgid "Post Type"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-title-widget.php:156
+#: wp-widgets/theme-recent-post-widget.php:164
+msgid "No Of Posts"
+msgstr ""
+
+#: wp-widgets/theme-recent-post-widget.php:22
+msgid "Charifund: Recent Posts with Thumbnails"
+msgstr ""
+
+#: wp-widgets/theme-request-form-widget.php:17
+msgid "Charifund: Request Form"
+msgstr ""
+
+#: wp-widgets/theme-request-form-widget.php:19
+msgid "Display Request Form widget"
+msgstr ""
+
+#: wp-widgets/theme-request-form-widget.php:30
+#: wp-widgets/theme-social-share-widget.php:25
+msgid "Never Miss News"
+msgstr ""
+
+#: wp-widgets/theme-social-share-widget.php:17
+msgid "Charifund: Social Share"
+msgstr ""
+
+#: wp-widgets/theme-social-share-widget.php:19
+msgid "Display Social Share widget"
+msgstr ""
+
+#: wp-widgets/theme-social-share-widget.php:41
+msgid "Enter Your Ulr"
+msgstr ""

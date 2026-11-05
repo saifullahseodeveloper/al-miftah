@@ -1,0 +1,1176 @@
+<?php
+
+namespace Better_Payment\Lite\Classes;
+use Better_Payment\Lite\Traits\Helper as TraitsHelper;
+
+/**
+ * Exit if accessed directly
+ */
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * The plugin action class
+ * 
+ * @since 0.0.1
+ */
+class Actions {
+    use TraitsHelper;
+    /**
+     * Constructor
+     * 
+     * @since 0.0.1
+     */
+    public function __construct() {
+        add_action( 'admin_post_paypal_form_handle', [ $this, 'paypal_form_handle' ] );
+        add_action( 'admin_post_nopriv_paypal_form_handle', [ $this, 'paypal_form_handle' ] );
+
+        add_action( 'wp_ajax_better_payment_stripe_get_token', [ $this, 'better_payment_stripe_get_token' ] );
+        add_action( 'wp_ajax_nopriv_better_payment_stripe_get_token', [ $this, 'better_payment_stripe_get_token' ] );
+
+        add_action( 'wp_ajax_better_payment_paystack_get_token', [ $this, 'better_payment_paystack_get_token' ] );
+        add_action( 'wp_ajax_nopriv_better_payment_paystack_get_token', [ $this, 'better_payment_paystack_get_token' ] );
+
+        // NOTE: PayPal IPN + verification-poll hooks are registered unconditionally
+        // in better-payment.php (init_plugin), not here — they must run even when
+        // Elementor is inactive (block/campaign payment flow).
+    }
+
+
+    /**
+     * Handle the paypal form
+     * 
+     * @since 0.0.1
+     */
+    public function paypal_form_handle() {
+
+        check_admin_referer( 'better-payment-paypal', 'security' );
+
+        $page_id = ! empty( $_POST[ 'better_payment_page_id' ] ) ? intval( $_POST[ 'better_payment_page_id' ], 10 ) : 0;
+
+        if ( ! $page_id ) {
+            $this->redirect_previous_page();
+        }
+
+        if ( !empty( $_POST[ 'better_payment_widget_id' ] ) ) {
+            $widget_id = sanitize_text_field( $_POST[ 'better_payment_widget_id' ] );
+        } else {
+            $this->redirect_previous_page();
+        }
+
+        $el_settings = $this->better_payment_widget_settings( $page_id, $widget_id );
+
+        if ( empty( $el_settings ) ) {
+            $this->redirect_previous_page();
+        }
+
+        if ( empty( $el_settings[ 'better_payment_paypal_business_email' ] ) ) {
+            $this->redirect_previous_page();
+        }
+
+        if ( $el_settings[ 'better_payment_paypal_live_mode' ] == 'yes' ) {
+            $path = "paypal";
+        } else {
+            $path = "sandbox.paypal";
+        }
+
+        $el_settings_currency = $el_settings[ 'better_payment_form_currency' ];
+        $woo_product_id = !empty($el_settings["better_payment_form_woocommerce_product_id"]) ? intval($el_settings["better_payment_form_woocommerce_product_id"]) : 0;
+        $woo_product_ids = !empty($el_settings["better_payment_form_woocommerce_product_ids"]) ? $el_settings["better_payment_form_woocommerce_product_ids"] : [0];
+        $fluentcart_product_id = !empty($el_settings["better_payment_form_fluentcart_product_id"]) ? intval($el_settings["better_payment_form_fluentcart_product_id"]) : 0;
+        $fluentcart_product_ids = !empty($el_settings["better_payment_form_fluentcart_product_ids"]) ? $el_settings["better_payment_form_fluentcart_product_ids"] : [0];
+        $is_layout_6 = ! empty( $el_settings[ 'better_payment_form_layout' ] ) && 'layout-6-pro' === $el_settings[ 'better_payment_form_layout' ];
+        $is_fluentcart_layout = $is_layout_6 && ! empty( $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] ) && 'fluentcart' === $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ];
+        $is_woo_layout = $is_layout_6 && ( empty( $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] ) || 'woocommerce' === $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] );
+
+        // Amount, quantity, currency and campaign come from the stored settings, never
+        // from the request — see PaymentRequestGuard.
+        $guarded = ( new PaymentRequestGuard() )->resolve_form_payment(
+            $el_settings,
+            wp_unslash( $_POST ),
+            [
+                'page_id' => $page_id,
+                'gateway' => 'paypal',
+            ]
+        );
+
+        if ( is_wp_error( $guarded ) ) {
+            PaymentRequestGuard::reject_form_post( $guarded );
+            return;
+        }
+
+        $el_settings_currency        = $guarded['currency'];
+        $el_settings_currency_symbol = $this->get_currency_symbol( esc_html($el_settings_currency) );
+
+        $primary_payment_amount          = $guarded['amount'];
+        $primary_payment_amount_quantity = $guarded['quantity'];
+
+        $order_id     = Handler::new_order_id( 'paypal' );
+        $request_data = [
+            'business'      => $el_settings[ 'better_payment_paypal_business_email' ],
+            'currency_code' => $el_settings_currency,
+            'rm'            => '2',
+            'return'        => esc_url_raw( $_POST[ 'return' ] ),
+            'cancel_return' => add_query_arg( 'better_payment_paypal_id', $order_id, esc_url_raw( $_POST[ 'cancel_return' ] ) ),
+            'item_number'   => $order_id,
+            'item_name'     => ! empty( $el_settings['better_payment_form_title'] ) ? esc_html__( $el_settings['better_payment_form_title'], 'better-payment' ) : esc_html__('Better Payment', 'better-payment'),
+            'amount'        => $primary_payment_amount,
+            'cmd'           => $el_settings[ 'better_payment_paypal_button_type' ],
+            'notify_url'    => admin_url( 'admin-post.php?action=better_payment_paypal_ipn' ),
+        ];
+
+        $product_ids = [
+            'woo_product_ids' => $woo_product_ids,
+            'fluentcart_product_ids' => $fluentcart_product_ids,
+        ];
+
+        $detailed_product_info = $this->get_detailed_product_info( $product_ids );
+
+        //Form fields data to send via email
+        $better_form_fields = [
+            'amount' => sanitize_text_field($el_settings_currency_symbol) . $primary_payment_amount,
+            'referer_page_id' => $page_id,
+            'referer_widget_id' => $widget_id,
+            'woo_product_id' => $woo_product_id,
+            'woo_product_ids' => maybe_serialize( $woo_product_ids ),
+            'fluentcart_product_id' => $fluentcart_product_id,
+            'fluentcart_product_ids' => maybe_serialize( $fluentcart_product_ids ),
+            'source' => 'paypal',
+            'amount_quantity' => ! empty( $primary_payment_amount_quantity ) ? intval( $primary_payment_amount_quantity ) : '',
+            'is_woo_layout' => $is_woo_layout,
+            'is_fluentcart_layout' => $is_fluentcart_layout,
+            'detailed_product_info' => maybe_serialize( $detailed_product_info ),
+            'paypal_business_email' => sanitize_email( $el_settings['better_payment_paypal_business_email'] ),
+            // Persisted so the async PayPal IPN can rebuild the e-mail body + on/off toggle.
+            'email_settings'        => Handler::extract_email_settings( $el_settings ),
+        ];
+
+        $better_form_fields = array_merge( $better_form_fields, $this->fetch_better_form_fields($el_settings, $_POST) );
+
+        if ( !empty( $better_form_fields[ 'primary_first_name' ] ) ) {
+            $request_data[ 'primary_first_name' ] = sanitize_text_field( $better_form_fields[ 'primary_first_name' ] );
+        }
+
+        if ( !empty( $better_form_fields[ 'primary_last_name' ] ) ) {
+            $request_data[ 'primary_last_name' ] = sanitize_text_field( $better_form_fields[ 'primary_last_name' ] );
+        }
+
+        if ( !empty( $better_form_fields[ 'primary_email' ] ) ) {
+            $request_data[ 'primary_email' ] = sanitize_email( $better_form_fields[ 'primary_email' ] );
+        }
+
+        if ( !empty( $better_form_fields[ 'primary_reference_number' ] ) ) {
+            $request_data[ 'invoice' ] = sanitize_text_field( $better_form_fields[ 'primary_reference_number' ] );
+        }
+        
+        $campaign_id = $guarded['campaign_id'];
+
+        Handler::payment_create(
+            [
+                'amount'       => floatval( $primary_payment_amount ),
+                'order_id'     => $order_id,
+                'payment_date' => date( 'Y-m-d H:i:s' ),
+                'source'       => 'paypal',
+                'form_fields_info'     => maybe_serialize( $better_form_fields ),
+                'currency'     => sanitize_text_field($el_settings_currency),
+                'referer'      => "widget",
+                'campaign_id'  => $campaign_id,
+            ]
+        );
+        $paypal_url = "https://www.$path.com/cgi-bin/webscr?";
+        $paypal_url .= http_build_query( $request_data );
+        wp_redirect( esc_url_raw($paypal_url) );
+    }
+
+    /**
+     * Get the stripe token
+     * 
+     * @since 0.0.1
+     */
+    public function better_payment_stripe_get_token() {
+        if ( !check_admin_referer( 'better-payment', 'security' ) ) {
+            wp_send_json_error();
+        }
+
+        $setting_data_page_id = isset($_POST[ 'setting_data' ]['page_id']) ? intval( $_POST[ 'setting_data' ]['page_id'] ) : 0;
+        $setting_data_widget_id = isset($_POST[ 'setting_data' ]['widget_id']) ? sanitize_text_field( $_POST[ 'setting_data' ]['widget_id'] ) : 0;
+
+        if ( !empty( $setting_data_page_id ) ) {
+            $page_id = $setting_data_page_id;
+        } else {
+            $err_msg = __( 'Page ID is missing', 'better-payment' );
+            wp_send_json_error( esc_html($err_msg) );
+        }
+
+        if ( !empty( $setting_data_widget_id ) ) {
+            $widget_id = sanitize_text_field( $setting_data_widget_id );
+        } else {
+            $err_msg = __( 'Widget ID is missing', 'better-payment' );
+            wp_send_json_error( esc_html($err_msg) );
+        }
+
+        $el_settings = $this->better_payment_widget_settings( $page_id, $widget_id );
+
+        // Before any setting is read: an unknown, or unpublished, form has none.
+        if ( empty( $el_settings ) ) {
+            wp_send_json_error( esc_html(__( 'Setting Data is missing', 'better-payment' )) );
+        }
+
+        $is_layout_6 = ! empty( $el_settings[ 'better_payment_form_layout' ] ) && 'layout-6-pro' === $el_settings[ 'better_payment_form_layout' ];
+        $is_fluentcart_layout = $is_layout_6 && ! empty( $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] ) && 'fluentcart' === $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ];
+        $is_woo_layout = $is_layout_6 && ( empty( $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] ) || 'woocommerce' === $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] );
+
+        $better_payment_keys = [
+            'public_key' => 'yes' === sanitize_text_field( $el_settings[ 'better_payment_stripe_live_mode' ] ) ? sanitize_text_field( $el_settings[ 'better_payment_stripe_public_key_live' ] ) : sanitize_text_field( $el_settings[ 'better_payment_stripe_public_key' ] ),
+            'secret_key' => 'yes' === sanitize_text_field( $el_settings[ 'better_payment_stripe_live_mode' ] ) ? sanitize_text_field( $el_settings[ 'better_payment_stripe_secret_key_live' ] ) : sanitize_text_field( $el_settings[ 'better_payment_stripe_secret_key' ] ),
+        ];
+
+        $is_payment_split_payment = ! empty( $el_settings["better_payment_form_payment_type"] ) && 'split-payment' === $el_settings["better_payment_form_payment_type"];
+
+        // Amount, quantity, currency, price ids, coupon and campaign come from the stored
+        // settings, never from the request — see PaymentRequestGuard.
+        $guard   = new PaymentRequestGuard();
+        $guarded = $guard->resolve_form_payment(
+            $el_settings,
+            isset( $_POST['fields'] ) && is_array( $_POST['fields'] ) ? wp_unslash( $_POST['fields'] ) : [],
+            [
+                'page_id' => $page_id,
+                'gateway' => 'stripe',
+            ]
+        );
+
+        if ( is_wp_error( $guarded ) ) {
+            wp_send_json_error( esc_html( $guarded->get_error_message() ) );
+        }
+
+        $amount             = $guarded['amount'];
+        $amount_quantity    = $guarded['quantity'];
+        $product_quantities = $guarded['product_quantities'];
+
+        if ( empty( $better_payment_keys['public_key'] ) || empty( $better_payment_keys['secret_key'] ) ) {
+            wp_send_json_error( esc_html(__( 'Stripe Key missing', 'better-payment' )) );
+        }
+
+        $header_info = array(
+            'Authorization'  => 'Basic ' . base64_encode( sanitize_text_field( $better_payment_keys['secret_key'] ) . ':' ),
+            'Stripe-Version' => '2019-05-16'
+        );
+
+        $order_id = Handler::new_order_id( 'stripe' );
+
+        $el_settings_currency = $el_settings[ 'better_payment_form_currency' ];
+        $woo_product_id = !empty($el_settings["better_payment_form_woocommerce_product_id"]) ? intval($el_settings["better_payment_form_woocommerce_product_id"]) : 0;
+        $woo_product_ids = !empty($el_settings["better_payment_form_woocommerce_product_ids"]) ? $el_settings["better_payment_form_woocommerce_product_ids"] : [0];
+        $fluentcart_product_id = !empty($el_settings["better_payment_form_fluentcart_product_id"]) ? intval($el_settings["better_payment_form_fluentcart_product_id"]) : 0;
+        $fluentcart_product_ids = !empty($el_settings["better_payment_form_fluentcart_product_ids"]) ? $el_settings["better_payment_form_fluentcart_product_ids"] : [0];
+
+        $el_settings_currency = $guarded['currency'];
+
+        $el_settings_currency_symbol = $this->get_currency_symbol( esc_html($el_settings_currency) );
+
+        $request  = [
+            'success_url'                => add_query_arg( [
+                'better_payment_stripe_status' => 'success',
+                'better_payment_stripe_id'     => $order_id,
+                'better_payment_widget_id'     => $widget_id
+            ], get_permalink( $setting_data_page_id )  ),
+            'cancel_url'                 => add_query_arg( [
+                'better_payment_error_status' => 'error',
+                'better_payment_stripe_id'    => $order_id,
+                'better_payment_widget_id'    => $widget_id
+            ], get_permalink( $setting_data_page_id )  ),
+            'locale'                     => 'auto',
+            'payment_method_types'       => [ 'card' ],
+            'client_reference_id'        => time(),
+            'billing_address_collection' => 'required',
+            'metadata'                   => [
+                'order_id' => $order_id
+            ],
+            'line_items'                 => [
+                [
+                    'amount'   => (int) round( $amount * 100 ),
+                    'currency' => $el_settings_currency,
+                    'name'     => ! empty( $el_settings['better_payment_form_title'] ) ? esc_html__( $el_settings['better_payment_form_title'], 'better-payment' ) : esc_html__('Better Payment', 'better-payment'),
+                    'quantity' => 1
+                ]
+            ],
+            'payment_intent_data'        => [
+                'capture_method' => 'automatic',
+                'description'    => ! empty( $el_settings['better_payment_form_title'] ) ? esc_html__( $el_settings['better_payment_form_title'], 'better-payment' ) : esc_html__('Better Payment', 'better-payment'),
+                'metadata'       => [
+                    'order_id' => $order_id
+                ]
+            ]
+        ];
+
+        // The typed code is kept for the receipt; what Stripe applies is decided by the guard —
+        // an active promotion code, or a coupon the merchant tagged public. A bare coupon id
+        // no longer works, because every coupon in the account (internal 100%-off ones
+        // included) would be one guess away.
+        $coupon_code = $guarded['coupon_code'];
+        $discount    = $guard->resolve_stripe_discount( $coupon_code, $better_payment_keys['secret_key'] );
+
+        if ( is_wp_error( $discount ) ) {
+            wp_send_json_error( esc_html( $discount->get_error_message() ) );
+        }
+
+        if ( ! empty( $discount ) ) {
+            $request['discounts'] = [ $discount ];
+        }
+
+        $is_payment_recurring = $guarded['is_recurring'];
+        $recurring_price_id = $guarded['recurring_price_id'];
+        $mixed_payment_selection_data = $this->get_mixed_payment_selection_data( $el_settings, $_POST['fields'] );
+        
+        if ( is_wp_error( $mixed_payment_selection_data ) ) {
+            wp_send_json_error( $mixed_payment_selection_data->get_error_message() );
+        }
+
+        $is_payment_mixed_recurring = ! empty( $mixed_payment_selection_data['is_mixed_recurring'] );
+        $mixed_dynamic_recurring_price = [];
+
+        if ( $is_payment_mixed_recurring ) {
+            $mixed_dynamic_recurring_price = $this->create_mixed_recurring_stripe_price(
+                $header_info,
+                $amount,
+                $el_settings_currency,
+                $order_id,
+                $widget_id,
+                $mixed_payment_selection_data,
+                $el_settings
+            );
+
+            if ( is_wp_error( $mixed_dynamic_recurring_price ) ) {
+                wp_send_json_error( $mixed_dynamic_recurring_price->get_error_message() );
+            }
+
+            // Reuse existing recurring checkout flow with a runtime-generated recurring Stripe Price.
+            $is_payment_recurring = true;
+            $recurring_price_id = ! empty( $mixed_dynamic_recurring_price['price_id'] ) ? sanitize_text_field( $mixed_dynamic_recurring_price['price_id'] ) : '';
+        }
+
+        $product_ids = [
+            'woo_product_ids' => $woo_product_ids,
+            'fluentcart_product_ids' => $fluentcart_product_ids,
+        ];
+
+        $detailed_product_info = $this->get_detailed_product_info( $product_ids, $product_quantities );
+
+        //Form fields data to send via email
+        $better_form_fields = [
+            'amount' => $el_settings_currency_symbol . $amount,
+            'referer_page_id' => $page_id,
+            'referer_widget_id' => $widget_id,
+            'woo_product_id' => $woo_product_id,
+            'woo_product_ids' => maybe_serialize( $woo_product_ids ),
+            'fluentcart_product_id' => $fluentcart_product_id,
+            'fluentcart_product_ids' => maybe_serialize( $fluentcart_product_ids ),
+            'source' => 'stripe',
+            'amount_quantity' => ! empty( $amount_quantity ) ? $amount_quantity : '',
+            'is_woo_layout' => $is_woo_layout,
+            'is_fluentcart_layout' => $is_fluentcart_layout,
+            'stripe_coupon_code' => $coupon_code,
+            'detailed_product_info' => maybe_serialize( $detailed_product_info ),
+        ];
+
+        $better_form_fields = array_merge( $better_form_fields, $this->fetch_better_form_fields($el_settings, $_POST['fields']) );
+
+        if ( ! empty( $mixed_payment_selection_data['is_payment_mixed'] ) ) {
+            $better_form_fields['is_payment_mixed'] = 1;
+            $better_form_fields['mixed_payment_selected_type'] = ! empty( $mixed_payment_selection_data['selected_type'] ) ? sanitize_text_field( $mixed_payment_selection_data['selected_type'] ) : 'one-time';
+        }
+
+        if ( $is_payment_mixed_recurring ) {
+            $better_form_fields['mixed_payment_selected_type'] = 'recurring';
+            $better_form_fields['mixed_payment_recurring_interval_count'] = ! empty( $mixed_payment_selection_data['interval_count'] ) ? absint( $mixed_payment_selection_data['interval_count'] ) : 1;
+            $better_form_fields['mixed_payment_recurring_interval'] = ! empty( $mixed_payment_selection_data['interval'] ) ? sanitize_text_field( $mixed_payment_selection_data['interval'] ) : 'month';
+            $better_form_fields['mixed_payment_dynamic_price_id'] = ! empty( $mixed_dynamic_recurring_price['price_id'] ) ? sanitize_text_field( $mixed_dynamic_recurring_price['price_id'] ) : '';
+            $better_form_fields['mixed_payment_dynamic_product_id'] = ! empty( $mixed_dynamic_recurring_price['product_id'] ) ? sanitize_text_field( $mixed_dynamic_recurring_price['product_id'] ) : '';
+        }
+
+        if ( !empty( $better_form_fields['primary_first_name'] ) ) {
+            $request[ 'customer_name' ] = $better_form_fields['primary_first_name'];
+        }
+
+        if ( !empty( $better_form_fields['primary_last_name'] ) ) {
+            $request[ 'customer_name' ] = !empty( $request[ 'customer_name' ] ) ? $request[ 'customer_name' ] . ' ' . $better_form_fields['primary_last_name'] : $better_form_fields['primary_last_name'];
+        }
+
+        if ( !empty( $request[ 'customer_name' ] ) ) {
+            $request[ 'metadata' ][ 'customer_name' ]                          = $request[ 'customer_name' ];
+            $request[ 'payment_intent_data' ][ 'metadata' ][ 'customer_name' ] = $request[ 'customer_name' ];
+            unset( $request[ 'customer_name' ] );
+        }
+
+        if ( !empty( $better_form_fields['primary_email'] ) ) {
+            $request[ 'customer_email' ]                                        = $better_form_fields['primary_email'];
+            $request[ 'metadata' ][ 'customer_email' ]                          = $request[ 'customer_email' ];
+            $request[ 'payment_intent_data' ][ 'metadata' ][ 'customer_email' ] = $request[ 'customer_email' ];
+
+        }
+
+        if ( $is_payment_split_payment ) {
+            $installment_price_id = $guarded['installment_price_id'];
+            $split_payment_installments_data = ! empty( $el_settings['better_payment_split_installment_price_ids'] ) ? $el_settings['better_payment_split_installment_price_ids'] : [];
+
+            if ( is_array( $split_payment_installments_data ) && count( $split_payment_installments_data ) ){
+                foreach( $split_payment_installments_data as $split_payment_installment_data ){
+                    $item_price_id = ! empty( $split_payment_installment_data[ 'better_payment_split_installment_price_id' ] ) ? sanitize_text_field( $split_payment_installment_data[ 'better_payment_split_installment_price_id' ] ) : '';
+                    
+                    if ( $installment_price_id === $item_price_id ) {
+                        $installment_price_iteration = ! empty( $split_payment_installment_data[ 'better_payment_split_installment_iteration' ] ) ? sanitize_text_field( $split_payment_installment_data[ 'better_payment_split_installment_iteration' ] ) : '';
+                        break;
+                    }
+                }
+            }
+
+            $better_form_fields['is_payment_split_payment'] = 1;
+            $better_form_fields['split_payment_installment_price_id'] = $installment_price_id;
+            $better_form_fields['split_payment_total_amount_price_id'] = $recurring_price_id;
+            $better_form_fields['split_payment_installment_iteration'] = ( !empty( $installment_price_id ) && !empty( $installment_price_iteration ) ) ? $installment_price_iteration : 1;
+            $better_form_fields['split_payment_total_amount'] = $amount * $better_form_fields['split_payment_installment_iteration'];
+        }
+        
+        if ( $is_payment_recurring || $is_payment_split_payment ) {
+            $request['mode'] = 'subscription';
+            unset($request['line_items'][0]);
+            unset($request['payment_intent_data']);
+            $request['line_items'][0]['price'] = $is_payment_split_payment && ! empty( $installment_price_id ) ? $installment_price_id : $recurring_price_id;
+            $request['line_items'][0]['quantity'] = 1;
+
+            $better_form_fields['mode'] = $request['mode'];
+            $better_form_fields['recurring_price_id'] = $request['line_items'][0]['price'];
+        }
+
+        #ToDo: Need to prefill name field on stripe checkout
+        $response = wp_safe_remote_post(
+            'https://api.stripe.com/v1/checkout/sessions',
+            array(
+                'method'  => 'POST',
+                'headers' => $header_info,
+                'body'    => $request,
+                'timeout' => 70,
+            )
+        );
+
+        $response_ar = json_decode( $response[ 'body' ] );
+
+        if ( ! empty( $response_ar->payment_intent ) || ( ! empty( $response_ar->mode ) && 'subscription' === $response_ar->mode ) ) {
+            $campaign_id = $guarded['campaign_id'];
+
+            Handler::payment_create(
+                [
+                    'amount'         => $amount,
+                    'order_id'       => $order_id,
+                    'payment_date'   => date( 'Y-m-d H:i:s' ),
+                    'source'         => 'stripe',
+                    'transaction_id' => sanitize_text_field($response_ar->payment_intent),
+                    'customer_info'  => maybe_serialize( $response_ar ),
+                    'form_fields_info'  => maybe_serialize( $better_form_fields ),
+                    'obj_id'         => sanitize_text_field($response_ar->id),
+                    'status'         => sanitize_text_field($response_ar->payment_status),
+                    'currency'       => $el_settings_currency,
+                    'referer'        => "widget",
+                    'campaign_id'    => $campaign_id,
+                ]
+            );
+            wp_send_json_success(
+                [
+                    'stripe_data'       => sanitize_text_field($response_ar->id),
+                    'stripe_public_key' => sanitize_text_field( $better_payment_keys['public_key'] )
+                ]
+            );
+        } else {
+            $error_message = 'Something went wrong!';
+
+            if (isset($response_ar->error)){
+                $error_message = sanitize_text_field($response_ar->error->message);
+            }
+
+            wp_send_json_error( $error_message );
+        }
+    }
+
+    /**
+     * Parse mixed payment selection payload.
+     *
+     * @param array $el_settings
+     * @param array $fields
+     *
+     * @return array|\WP_Error
+     */
+    private function get_mixed_payment_selection_data( $el_settings = [], $fields = [] ) {
+        $selection_data = [
+            'is_payment_mixed' => 0,
+            'selected_type' => 'one-time',
+            'is_mixed_recurring' => 0,
+            'interval_count' => 1,
+            'interval' => 'month',
+        ];
+
+        $is_payment_mixed = ! empty( $el_settings['better_payment_form_payment_type'] ) && 'mixed' === sanitize_text_field( $el_settings['better_payment_form_payment_type'] );
+        if ( ! $is_payment_mixed ) {
+            return $selection_data;
+        }
+
+        $selection_data['is_payment_mixed'] = 1;
+        $selected_type = ! empty( $fields['better_payment_mixed_selected_type'] ) ? sanitize_text_field( $fields['better_payment_mixed_selected_type'] ) : '';
+        if ( ! empty( $fields['payment_type'] ) && in_array( $fields['payment_type'], [ 'one-time', 'recurring' ], true ) ) {
+            $selected_type = sanitize_text_field( $fields['payment_type'] );
+        }
+
+        $selected_type = in_array( $selected_type, [ 'one-time', 'recurring' ], true ) ? $selected_type : 'one-time';
+        $selection_data['selected_type'] = $selected_type;
+        $selection_data['is_mixed_recurring'] = 'recurring' === $selected_type ? 1 : 0;
+
+        if ( ! $selection_data['is_mixed_recurring'] ) {
+            return $selection_data;
+        }
+
+        $allowed_intervals = [ 'day', 'week', 'month', 'year' ];
+        $mixed_interval_value = ! empty( $fields['better_payment_mixed_interval'] ) ? sanitize_text_field( $fields['better_payment_mixed_interval'] ) : '';
+
+        if ( empty( $mixed_interval_value ) ) {
+            $interval_type = ! empty( $fields['better_payment_mixed_interval_type'] ) ? sanitize_key( $fields['better_payment_mixed_interval_type'] ) : '';
+
+            if ( empty( $interval_type ) ) {
+                if ( ! empty( $fields['better_payment_mixed_interval_day'] ) ) {
+                    $interval_type = 'day';
+                } elseif ( ! empty( $fields['better_payment_mixed_interval_week'] ) ) {
+                    $interval_type = 'week';
+                } elseif ( ! empty( $fields['better_payment_mixed_interval_month'] ) ) {
+                    $interval_type = 'month';
+                } elseif ( ! empty( $fields['better_payment_mixed_interval_year'] ) ) {
+                    $interval_type = 'year';
+                }
+            }
+
+            $interval_type = in_array( $interval_type, $allowed_intervals, true ) ? $interval_type : '';
+            $interval_count = 0;
+
+            switch ( $interval_type ) {
+                case 'day':
+                    $interval_count = ! empty( $fields['better_payment_mixed_interval_day'] ) ? absint( $fields['better_payment_mixed_interval_day'] ) : 0;
+                    break;
+                case 'week':
+                    $interval_count = ! empty( $fields['better_payment_mixed_interval_week'] ) ? absint( $fields['better_payment_mixed_interval_week'] ) : 0;
+                    break;
+                case 'year':
+                    $interval_count = ! empty( $fields['better_payment_mixed_interval_year'] ) ? absint( $fields['better_payment_mixed_interval_year'] ) : 0;
+                    break;
+                case 'month':
+                default:
+                    $interval_count = ! empty( $fields['better_payment_mixed_interval_month'] ) ? absint( $fields['better_payment_mixed_interval_month'] ) : 0;
+                    break;
+            }
+
+            if ( ! empty( $interval_count ) && ! empty( $interval_type ) ) {
+                $mixed_interval_value = "{$interval_count}|{$interval_type}";
+            }
+        }
+
+        if ( empty( $mixed_interval_value ) || false === strpos( $mixed_interval_value, '|' ) ) {
+            return new \WP_Error( 'mixed_interval_missing', __( 'Recurring time period is required for mixed recurring payment.', 'better-payment' ) );
+        }
+
+        list( $interval_count_raw, $interval_raw ) = array_pad( explode( '|', $mixed_interval_value, 2 ), 2, '' );
+        $interval_count = absint( $interval_count_raw );
+        $interval = sanitize_key( $interval_raw );
+
+        if ( empty( $interval_count ) || ! in_array( $interval, $allowed_intervals, true ) ) {
+            return new \WP_Error( 'mixed_interval_invalid', __( 'Invalid recurring time period selected for mixed payment.', 'better-payment' ) );
+        }
+
+        // The period decides how often the amount is charged, so — like the amount — it must
+        // be one the form offers: a "$10 monthly" plan must not become "$10 yearly".
+        if ( ! in_array( "{$interval_count}|{$interval}", self::mixed_interval_options( $el_settings ), true ) ) {
+            return new \WP_Error( 'mixed_interval_invalid', __( 'Invalid recurring time period selected for mixed payment.', 'better-payment' ) );
+        }
+
+        $selection_data['interval_count'] = $interval_count;
+        $selection_data['interval'] = $interval;
+
+        return $selection_data;
+    }
+
+    /**
+     * Create a runtime Stripe recurring Price (and Product) for mixed recurring payments.
+     *
+     * @param array  $header_info
+     * @param float  $amount
+     * @param string $currency
+     * @param string $order_id
+     * @param string $widget_id
+     * @param array  $selection_data
+     * @param array  $el_settings
+     *
+     * @return array|\WP_Error
+     */
+    private function create_mixed_recurring_stripe_price( $header_info = [], $amount = 0, $currency = '', $order_id = '', $widget_id = '', $selection_data = [], $el_settings = [] ) {
+        $unit_amount = (int) round( floatval( $amount ) * 100 );
+        if ( $unit_amount < 1 ) {
+            return new \WP_Error( 'mixed_amount_invalid', __( 'Payment Amount field is required!', 'better-payment' ) );
+        }
+
+        $product_id = ! empty( $el_settings['better_payment_one_time_recurring_product_id'] )
+            ? sanitize_text_field( $el_settings['better_payment_one_time_recurring_product_id'] )
+            : '';
+
+        if ( empty( $product_id ) ) {
+            return new \WP_Error(
+                'mixed_product_id_missing',
+                __( 'Stripe Product ID is required for mixed recurring payments. Please provide it in the widget settings.', 'better-payment' )
+            );
+        }
+
+        $interval = ! empty( $selection_data['interval'] ) ? sanitize_key( $selection_data['interval'] ) : 'month';
+        $interval_count = ! empty( $selection_data['interval_count'] ) ? absint( $selection_data['interval_count'] ) : 1;
+        $currency = ! empty( $currency ) ? strtolower( sanitize_text_field( $currency ) ) : 'usd';
+
+        $form_name = ! empty( $el_settings['better_payment_form_title'] ) ? sanitize_text_field( $el_settings['better_payment_form_title'] ) : __( 'Better Payment', 'better-payment' );
+
+        $interval_label = $interval;
+        if ( $interval_count > 1 ) {
+            $interval_label = $interval_count . ' ' . $interval . 's';
+        }
+
+        // One Price per plan, not one per request. This runs for anonymous visitors, and a
+        // Price created on every checkout attempt piled objects into the merchant's Stripe
+        // account without limit. A plan is reused through a lookup key derived from exactly
+        // what it charges, so the Price carries no per-order data (the order id lives on the
+        // Checkout Session instead).
+        $lookup_key = self::mixed_price_lookup_key( $product_id, $currency, $unit_amount, $interval, $interval_count );
+        $existing   = $this->find_mixed_recurring_stripe_price( $header_info, $lookup_key, $product_id, $currency, $unit_amount, $interval, $interval_count );
+
+        if ( '' !== $existing ) {
+            return [
+                'price_id' => $existing,
+                'product_id' => $product_id,
+            ];
+        }
+
+        $price_request = [
+            'currency' => $currency,
+            'unit_amount' => $unit_amount,
+            'recurring' => [
+                'interval' => $interval,
+                'interval_count' => $interval_count,
+            ],
+            'product' => $product_id,
+            'lookup_key' => $lookup_key,
+            'nickname' => sprintf( '%s - %s', $form_name, $interval_label ),
+            'metadata' => [
+                'is_mixed_payment' => '1',
+                'mixed_interval' => $interval,
+                'mixed_interval_count' => strval( $interval_count ),
+            ],
+        ];
+
+        $response = wp_safe_remote_post(
+            'https://api.stripe.com/v1/prices',
+            [
+                'method'  => 'POST',
+                'headers' => $header_info,
+                'body'    => $price_request,
+                'timeout' => 70,
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) {
+            return new \WP_Error( 'mixed_price_request_failed', $response->get_error_message() );
+        }
+
+        $response_body = wp_remote_retrieve_body( $response );
+        $response_ar = ! empty( $response_body ) ? json_decode( $response_body ) : null;
+        $error_message = ! empty( $response_ar->error->message ) ? sanitize_text_field( $response_ar->error->message ) : __( 'Unable to create recurring Stripe price for mixed payment.', 'better-payment' );
+
+        if ( empty( $response_ar ) || empty( $response_ar->id ) ) {
+            // A concurrent request may have claimed the lookup key a moment earlier.
+            $existing = $this->find_mixed_recurring_stripe_price( $header_info, $lookup_key, $product_id, $currency, $unit_amount, $interval, $interval_count );
+
+            if ( '' !== $existing ) {
+                return [
+                    'price_id' => $existing,
+                    'product_id' => $product_id,
+                ];
+            }
+
+            return new \WP_Error( 'mixed_price_create_failed', $error_message );
+        }
+
+        return [
+            'price_id' => sanitize_text_field( $response_ar->id ),
+            'product_id' => $product_id,
+        ];
+    }
+
+    /**
+     * The periods a mixed-payment form offers, as `{count}|{interval}` — the exact values
+     * layouts 4/5 (Pro) render into the "Recurring time period" select.
+     *
+     * @param array $el_settings Form settings.
+     * @return string[]
+     */
+    private static function mixed_interval_options( $el_settings = [] ) {
+        $items   = ! empty( $el_settings['better_payment_mixed_installment_options'] ) && is_array( $el_settings['better_payment_mixed_installment_options'] )
+            ? $el_settings['better_payment_mixed_installment_options']
+            : [];
+        $options = [];
+
+        foreach ( $items as $option ) {
+            if ( ! is_array( $option ) ) {
+                continue;
+            }
+
+            $type = ! empty( $option['better_payment_mixed_interval_type'] ) ? sanitize_key( $option['better_payment_mixed_interval_type'] ) : 'month';
+            $type = in_array( $type, [ 'day', 'week', 'month', 'year' ], true ) ? $type : 'month';
+
+            $count = ! empty( $option[ "better_payment_mixed_interval_{$type}" ] ) ? absint( $option[ "better_payment_mixed_interval_{$type}" ] ) : 0;
+
+            if ( empty( $count ) && ! empty( $option['better_payment_mixed_interval'] ) ) {
+                $count = absint( $option['better_payment_mixed_interval'] );
+            }
+
+            $options[] = ( $count ? $count : 1 ) . '|' . $type;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Stripe lookup key for a mixed recurring plan.
+     *
+     * @param string $product_id     Stripe product id.
+     * @param string $currency       Lower-case currency.
+     * @param int    $unit_amount    Minor units.
+     * @param string $interval       day|week|month|year.
+     * @param int    $interval_count Interval count.
+     * @return string
+     */
+    private static function mixed_price_lookup_key( $product_id, $currency, $unit_amount, $interval, $interval_count ) {
+        return 'bp_mixed_' . md5( implode( '|', [ $product_id, $currency, (int) $unit_amount, $interval, (int) $interval_count ] ) );
+    }
+
+    /**
+     * An active Stripe Price already created for this exact plan, or ''.
+     *
+     * The lookup key is ours, but a Price is only reused while it still charges exactly this
+     * plan — anything edited or mismatched in Stripe is ignored and a fresh one is created.
+     *
+     * @return string Price id, or '' when there is none to reuse.
+     */
+    private function find_mixed_recurring_stripe_price( $header_info, $lookup_key, $product_id, $currency, $unit_amount, $interval, $interval_count ) {
+        $response = wp_safe_remote_get(
+            'https://api.stripe.com/v1/prices?' . http_build_query(
+                [
+                    'lookup_keys' => [ $lookup_key ],
+                    'active'      => 'true',
+                    'limit'       => 1,
+                ]
+            ),
+            [
+                'headers' => $header_info,
+                'timeout' => 70,
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) {
+            return '';
+        }
+
+        $body  = json_decode( wp_remote_retrieve_body( $response ) );
+        $price = isset( $body->data ) && is_array( $body->data ) && ! empty( $body->data[0] ) ? $body->data[0] : null;
+
+        if ( ! is_object( $price ) || empty( $price->id ) ) {
+            return '';
+        }
+
+        $price_product = isset( $price->product ) && is_object( $price->product ) ? ( isset( $price->product->id ) ? $price->product->id : '' ) : ( isset( $price->product ) ? $price->product : '' );
+
+        $same_plan = isset( $price->unit_amount, $price->currency, $price->recurring->interval, $price->recurring->interval_count )
+            && (int) $price->unit_amount === (int) $unit_amount
+            && strtolower( (string) $price->currency ) === $currency
+            && (string) $price_product === (string) $product_id
+            && (string) $price->recurring->interval === $interval
+            && (int) $price->recurring->interval_count === (int) $interval_count;
+
+        return $same_plan ? sanitize_text_field( $price->id ) : '';
+    }
+
+    /**
+     * Get the paystack token
+     * 
+     * @since 0.0.1
+     */
+    public function better_payment_paystack_get_token() {
+        if ( !check_admin_referer( 'better-payment', 'security' ) ) {
+            wp_send_json_error();
+        }
+
+        $error_message = '';
+
+        if( empty( $_POST[ 'setting_data' ]['page_id'] ) ){
+           $error_message = __( 'Page ID is missing', 'better-payment' );
+        }
+
+        if( empty( $_POST[ 'setting_data' ]['widget_id'] ) ){
+            $error_message = __( 'Widget ID is missing', 'better-payment' );
+        }
+
+        if( ! empty( $error_message ) ){
+            wp_send_json_error( esc_html( $error_message ) );
+        }
+
+        $page_id = intval( $_POST[ 'setting_data' ]['page_id'] );
+        $widget_id = sanitize_text_field( $_POST[ 'setting_data' ]['widget_id'] );
+        $el_settings = $this->better_payment_widget_settings( $page_id, $widget_id );
+        $is_layout_6 = ! empty( $el_settings[ 'better_payment_form_layout' ] ) && 'layout-6-pro' === $el_settings[ 'better_payment_form_layout' ];
+        $is_fluentcart_layout = $is_layout_6 && ! empty( $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] ) && 'fluentcart' === $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ];
+        $is_woo_layout = $is_layout_6 && ( empty( $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] ) || 'woocommerce' === $el_settings[ 'better_payment_form_layout_6_ecommerce_platform' ] );
+
+        if ( empty( $el_settings ) ) {
+            wp_send_json_error( esc_html(__( 'Setting Data is missing', 'better-payment' )) );
+        }
+
+        if ( empty( $el_settings[ 'better_payment_paystack_public_key' ] ) || empty( $el_settings[ 'better_payment_paystack_secret_key' ] ) ) {
+            wp_send_json_error( esc_html(__( 'Paystack Key missing', 'better-payment' )) );
+        }
+
+        // Amount, quantity, currency and campaign come from the stored settings, never
+        // from the request — see PaymentRequestGuard.
+        $guarded = ( new PaymentRequestGuard() )->resolve_form_payment(
+            $el_settings,
+            isset( $_POST['fields'] ) && is_array( $_POST['fields'] ) ? wp_unslash( $_POST['fields'] ) : [],
+            [
+                'page_id' => $page_id,
+                'gateway' => 'paystack',
+            ]
+        );
+
+        if ( is_wp_error( $guarded ) ) {
+            wp_send_json_error( esc_html( $guarded->get_error_message() ) );
+        }
+
+        $amount          = $guarded['amount'];
+        $amount_quantity = $guarded['quantity'];
+
+        $header_info = array(
+            'Authorization'  => 'Bearer ' . sanitize_text_field( $el_settings[ 'better_payment_paystack_secret_key' ] ),
+            "Cache-Control: no-cache",
+        );
+
+        $order_id = Handler::new_order_id( 'paystack' );
+
+        $el_settings_currency = $el_settings[ 'better_payment_form_currency' ];
+        $woo_product_id = !empty($el_settings["better_payment_form_woocommerce_product_id"]) ? intval($el_settings["better_payment_form_woocommerce_product_id"]) : 0;
+        $woo_product_ids = !empty($el_settings["better_payment_form_woocommerce_product_ids"]) ? $el_settings["better_payment_form_woocommerce_product_ids"] : [0];
+        $fluentcart_product_id = !empty($el_settings["better_payment_form_fluentcart_product_id"]) ? intval($el_settings["better_payment_form_fluentcart_product_id"]) : 0;
+        $fluentcart_product_ids = !empty($el_settings["better_payment_form_fluentcart_product_ids"]) ? $el_settings["better_payment_form_fluentcart_product_ids"] : [0];
+
+        $el_settings_currency = $guarded['currency'];
+
+        $el_settings_currency_symbol = $this->get_currency_symbol( esc_html($el_settings_currency) );
+
+        $redirection_url_success    = get_permalink( $page_id );
+        $redirection_url_error      = get_permalink( $page_id );
+
+        $request  = [
+            'amount'   => ( $amount * 100 ),
+            'currency' => $el_settings_currency,
+            'cart_id'  => $order_id,
+            'callback_url'  => add_query_arg( [
+                'better_payment_paystack_status' => 'success',
+                'better_payment_paystack_id'     => $order_id,
+                'better_payment_widget_id'     => $widget_id
+            ], $redirection_url_success ),
+            'metadata' => [
+                'cancel_action' => add_query_arg( [
+                    'better_payment_error_status' => 'error',
+                    'better_payment_paystack_id'  => $order_id,
+                    'better_payment_widget_id'    => $widget_id
+                ], $redirection_url_error )
+            ]
+        ];
+
+        $product_ids = [
+            'woo_product_ids' => $woo_product_ids,
+            'fluentcart_product_ids' => $fluentcart_product_ids,
+        ];
+
+        $detailed_product_info = $this->get_detailed_product_info( $product_ids );
+
+        //Form fields data to send via email
+        $better_form_fields = [
+            'amount' => $el_settings_currency_symbol . $amount,
+            'referer_page_id' => $page_id,
+            'referer_widget_id' => $widget_id,
+            'woo_product_id' => $woo_product_id,
+            'woo_product_ids' => maybe_serialize( $woo_product_ids ),
+            'fluentcart_product_id' => $fluentcart_product_id,
+            'fluentcart_product_ids' => maybe_serialize( $fluentcart_product_ids ),
+            'source' => 'paystack',
+            'amount_quantity' => ! empty( $amount_quantity ) ? $amount_quantity : '',
+            'is_woo_layout' => $is_woo_layout,
+            'is_fluentcart_layout' => $is_fluentcart_layout,
+            'detailed_product_info' => maybe_serialize( $detailed_product_info ),
+        ];
+
+        $better_form_fields = array_merge( $better_form_fields, $this->fetch_better_form_fields($el_settings, $_POST['fields']) );
+
+        if ( !empty( $better_form_fields['primary_email'] ) ) {
+            $request[ 'email' ] = $better_form_fields['primary_email'];
+        }
+
+        if ( !empty( $better_form_fields['primary_first_name'] ) ) {
+            $request[ 'customer_name' ] = $better_form_fields['primary_first_name'];
+        }
+
+        if ( !empty( $better_form_fields['primary_last_name'] ) ) {
+            $request[ 'customer_name' ] = !empty( $request[ 'customer_name' ] ) ? $request[ 'customer_name' ] . ' ' . $better_form_fields['primary_last_name'] : $better_form_fields['primary_last_name'];
+        }
+
+        if ( !empty( $request[ 'customer_name' ] ) ) {
+            $request[ 'metadata' ][ 'customer_name' ]   = $request[ 'customer_name' ];
+            unset( $request[ 'customer_name' ] );
+        }
+
+        $response = wp_safe_remote_post(
+            'https://api.paystack.co/transaction/initialize',
+            array(
+                'method'  => 'POST',
+                'headers' => $header_info,
+                'body'    => $request,
+                'timeout' => 70,
+            )
+        );
+
+        $response_ar = json_decode( $response[ 'body' ] );
+
+        if( empty( $response_ar->status ) || empty( $response_ar->data ) ){
+            $error_message = $response_ar->message ? sanitize_text_field($response_ar->message) : 'Something went wrong!';
+
+            if (isset($response_ar->error)){
+                $error_message = sanitize_text_field($response_ar->error->message);
+            }
+
+            wp_send_json_error( $error_message );
+        }
+
+        $campaign_id = $guarded['campaign_id'];
+
+        Handler::payment_create(
+            [
+                'amount'         => $amount,
+                'order_id'       => $order_id,
+                'payment_date'   => date( 'Y-m-d H:i:s' ),
+                'source'         => 'paystack',
+                // Paystack's reference, so verification can bind it to this order.
+                'transaction_id' => ! empty( $response_ar->data->reference ) ? sanitize_text_field( $response_ar->data->reference ) : '',
+                'customer_info'  => maybe_serialize( $response_ar ),
+                'form_fields_info'  => maybe_serialize( $better_form_fields ),
+                'status'         => 'unpaid',
+                'currency'       => $el_settings_currency,
+                'referer'        => "widget",
+                'campaign_id'    => $campaign_id,
+            ]
+        );
+
+        $authorization_url = ! empty( $response_ar->data->authorization_url ) ? esc_url_raw( $response_ar->data->authorization_url ) : '';
+
+        wp_send_json_success(
+            [
+                'authorization_url' => $authorization_url,
+            ]
+        );
+    }
+
+    /**
+     * Get detailed product information
+     * @param array $product_ids Array of woo_product_ids and fluentcart_product_ids
+     * 
+     * @since 1.4.5
+     */
+    public function get_detailed_product_info( $product_ids, $product_quantities = [] ) {
+        $detailed_product_info = [];
+
+        if (function_exists('wc_get_product') && !empty($product_ids['woo_product_ids'])) {
+            foreach ($product_ids['woo_product_ids'] as $key => $product_id) {
+                if (empty($product_id)) continue;
+
+                $product = wc_get_product($product_id);
+                if ($product) {
+                    $product_image_src_array = wp_get_attachment_image_src( get_post_thumbnail_id( $product->get_id() ), 'single-post-thumbnail' );
+                    $product_image_src = is_array( $product_image_src_array ) && count( $product_image_src_array ) ? $product_image_src_array[0] : '';
+
+                    $quantity = !empty($product_quantities[$key]) ? intval($product_quantities[$key]) : 1;
+                    $price = floatval( $product->get_price() );
+                    $total_price = floatval( $price * $quantity );
+
+                    $detailed_product_info['woo_products'][$product_id] = [
+                        'name' => $product->get_name(),
+                        'product_id' => intval( $product_id ),
+                        'permalink' => esc_url( get_permalink($product->get_id()) ),
+                        'image_src' => esc_url( $product_image_src ),
+                        'price' => $price,
+                        'quantity' => $quantity,
+                        'total_price' => $total_price,
+                    ];
+                }
+            }
+        }
+
+        if (function_exists('fluentCart') && class_exists('\FluentCart\App\Models\Product') && !empty($product_ids['fluentcart_product_ids'])) {
+            foreach ($product_ids['fluentcart_product_ids'] as $key => $product_id) {
+                if (empty($product_id)) continue;
+
+                try {
+                    $fluentcart_product = \FluentCart\App\Models\Product::query()
+                        ->with(['detail', 'variants'])
+                        ->find($product_id);
+
+                    if ($fluentcart_product) {
+                        $product_price = 0;
+                        if (!empty($fluentcart_product->variants) && count($fluentcart_product->variants) > 0) {
+                            $product_price = $fluentcart_product->variants[0]->item_price;
+                        } elseif (!empty($fluentcart_product->detail)) {
+                            $product_price = $fluentcart_product->detail->min_price;
+                        }
+
+                        if ( ! empty( $product_price ) ) {
+                            $product_price = floatval( $product_price / 100 );
+                        }
+
+                        $product_image_src_array = wp_get_attachment_image_src( get_post_thumbnail_id( $fluentcart_product->ID ), 'single-post-thumbnail' );
+                        $product_image_src = is_array( $product_image_src_array ) && count( $product_image_src_array ) ? $product_image_src_array[0] : '';
+
+                        $quantity = !empty($product_quantities[$key]) ? intval($product_quantities[$key]) : 1;
+                        $total_price = floatval( $product_price * $quantity );
+
+                        $detailed_product_info['fluentcart_products'][$product_id] = [
+                            'name' => sanitize_text_field( $fluentcart_product->post_title ),
+                            'product_id' => intval( $product_id ),
+                            'permalink' => esc_url( get_permalink($fluentcart_product->ID) ),
+                            'image_src' => esc_url( $product_image_src ),
+                            'price' => $product_price,
+                            'quantity' => $quantity,
+                            'total_price' => $total_price,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    //
+                }
+            }
+        }
+
+        return $detailed_product_info;
+    }
+
+    /**
+     * Widget settings
+     * 
+     * @since 1.0.0
+     */
+    public function better_payment_widget_settings( $page_id, $widget_id ) {
+        // page_id is the visitor's to choose. A form on a page they cannot see — draft,
+        // private, scheduled, password-protected — must be neither payable nor probeable.
+        if ( ! $this->is_payable_form_page( $page_id ) ) {
+            return [];
+        }
+
+        $settings = $this->get_elementor_widget_settings( $page_id, $widget_id );
+
+        return $settings;
+    }
+
+    /**
+     * Redirect to referer page
+     * 
+     * @since 1.0.0
+     */
+    public function redirect_previous_page() {
+        $location = $_SERVER[ 'HTTP_REFERER' ];
+        wp_safe_redirect( $location );
+        exit();
+    }
+
+    /**
+     * Fetch form fields
+     * 
+     * @since 0.0.4
+     */
+
+    public function fetch_better_form_fields($el_settings, $post_data_form_fields) {
+        $better_form_fields = array();
+
+        $better_payment_helper_obj = new Helper();
+        $post_data_primary_first_name = '';
+        $post_data_primary_last_name = '';
+        $post_data_primary_email = '';
+
+        $post_fields = $post_data_form_fields;
+
+        $layout = ! empty( $el_settings['better_payment_form_layout'] ) ? sanitize_text_field( $el_settings['better_payment_form_layout'] ) : 'layout-1';
+
+        switch( $layout ) {
+            case 'layout-4-pro':
+                $el_settings['better_payment_form_fields'] = $el_settings['better_payment_form_fields_layout_4_5_6'];
+                break;
+
+            case 'layout-5-pro':
+                $el_settings['better_payment_form_fields'] = $el_settings['better_payment_form_fields_layout_4_5_6_desc'];
+                break;
+
+            case 'layout-6-pro':
+                $el_settings['better_payment_form_fields'] = $el_settings['better_payment_form_fields_layout_4_5_6_woo'];
+                break;
+
+            default:
+                break;
+        }
+
+        //in case of duplicate post name using the first one
+        if(isset($el_settings['better_payment_form_fields']) && count($el_settings['better_payment_form_fields'])){
+            foreach ($el_settings['better_payment_form_fields'] as $item) {
+
+                $item_field_name = $better_payment_helper_obj->titleToSnake($item["better_payment_field_name_heading"]);
+                if(!empty($item['better_payment_primary_field_type']) ){
+                    $item_primary_field_type = $item['better_payment_primary_field_type'];
+
+                    if( isset($post_fields[$item_primary_field_type]) ) {
+                        $post_fields[$item_primary_field_type] =  is_array($post_fields[$item_primary_field_type]) ? $post_fields[$item_primary_field_type][0] : $post_fields[$item_primary_field_type];
+                    }
+
+                    if( isset($post_fields[$item_field_name]) ) {
+                        $post_fields[$item_field_name] =  is_array($post_fields[$item_field_name]) ? $post_fields[$item_field_name][0] : $post_fields[$item_field_name];
+                    }
+
+                    if ( 'primary_first_name' == $item_primary_field_type && isset($post_fields[$item_primary_field_type])){
+                        $better_form_fields[$item_primary_field_type] =  sanitize_text_field($post_fields[$item_primary_field_type]);
+                        $post_data_primary_first_name = sanitize_text_field($post_fields[$item_primary_field_type]);
+
+                    }else if ( 'primary_last_name' == $item_primary_field_type && isset($post_fields[$item_primary_field_type])){
+                        $better_form_fields[$item_primary_field_type] = sanitize_text_field($post_fields[$item_primary_field_type]);
+                        $post_data_primary_last_name = sanitize_text_field($post_fields[$item_primary_field_type]);
+
+                    }else if( 'primary_email' == $item_primary_field_type && isset($post_fields[$item_primary_field_type])){
+                        $better_form_fields[$item_primary_field_type] = sanitize_email($post_fields[$item_primary_field_type]);
+                        $post_data_primary_email = sanitize_email($post_fields[$item_primary_field_type]);
+
+                    }else if ( 'primary_payment_amount' == $item_primary_field_type && isset($post_fields[$item_primary_field_type]) ){
+                        $better_form_fields[$item_primary_field_type] = floatval($post_fields[$item_primary_field_type]);
+
+                    }else if ( 'primary_reference_number' == $item_primary_field_type && isset($post_fields[$item_primary_field_type]) ){
+                        $better_form_fields[$item_primary_field_type] = sanitize_text_field($post_fields[$item_primary_field_type]);
+
+                    } else {
+                        $better_form_fields[$item_field_name] = !empty($post_fields[$item_field_name]) ? sanitize_text_field($post_fields[$item_field_name]) : '';
+                    }
+
+                }
+            }
+        }
+
+        return $better_form_fields;
+    }
+}

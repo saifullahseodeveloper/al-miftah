@@ -1,0 +1,244 @@
+/* ==== 
+ --------- (5.21) color switcher styles start ---------
+ ==== */
+.color-palate {
+  position: fixed;
+  left: 0px;
+  text-align: center;
+  top: 0%;
+  transition: all 0.5s ease 0s;
+  width: 100%;
+  max-width: 280px;
+  z-index: 999;
+  height: 100%;
+  transform: translateX(-100%);
+
+  .color-palate-inner {
+    position: relative;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transition: all;
+    background: #ffffff;
+    box-shadow: 0 0 20px 1px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    padding-bottom: 30px;
+    &::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #888;
+      &:hover {
+        background: #555;
+      }
+    }
+  }
+
+  .palate {
+    background: #0055d4;
+    display: block;
+    float: left;
+    height: 45px;
+    margin: 0 2.5% 12px;
+    width: 20%;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .colors-list .active::after {
+    content: "\2713";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    color: white;
+  }
+
+  .various-color {
+    overflow: hidden;
+    padding: 40px 0 15px;
+  }
+
+  .colors-list {
+    margin: 0 20px;
+  }
+
+  .secondary-head {
+    background: #222222;
+    padding: 14px 0;
+  }
+
+  .secondary-color {
+    padding: 23px 0;
+  }
+
+  .secondary-colors-list {
+    margin: 0 80px;
+  }
+
+  .palate-foo {
+    color: #777777;
+    font-size: 13px;
+    font-weight: 400;
+    padding: 0 30px;
+    line-height: 1.8em;
+  }
+
+  .palate-foo span {
+    display: block;
+    padding-top: 20px;
+    margin-top: 5px;
+    border-top: 1px dotted #b2b2b2;
+  }
+
+  .palate.default-color {
+    background: #ffc107;
+  }
+
+  .palate.blue-color {
+    background: #246af4;
+  }
+
+  .palate.brown-color {
+    background: #964b00;
+  }
+
+  .palate.green-color {
+    background: #3ead3c;
+  }
+
+  .palate.orange-color {
+    background: #ffb347;
+  }
+
+  .palate.purple-color {
+    background: #bb54e1;
+  }
+
+  .palate.teal-color {
+    background: #44a9aa;
+  }
+
+  .palate.yellow-color {
+    background: #fed000;
+  }
+
+  .color-trigger,
+  .close-color-trigger {
+    background: #0055d4;
+    cursor: pointer;
+    height: 36px;
+    width: 36px;
+    left: 100%;
+    position: absolute;
+    top: 40%;
+    transform: translateY(-40%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    mix-blend-mode: exclusion;
+  }
+
+  .color-trigger i {
+    color: #ffffff;
+    font-size: 16px;
+    animation: fa-spin 2s linear infinite;
+  }
+
+  .close-color-trigger i {
+    color: #ffffff;
+    font-size: 20px;
+  }
+
+  .close-color-trigger {
+    display: none;
+  }
+
+  h6 {
+    font-weight: 700;
+    color: #000000;
+    text-transform: uppercase;
+    font-size: 16px;
+    margin-top: 20px;
+  }
+
+  .box-version {
+    padding-top: 10px;
+    padding-bottom: 0px;
+  }
+
+  .option-box {
+    padding-top: 10px;
+    padding-bottom: 5px;
+
+    .active {
+      background-color: var(--black);
+    }
+  }
+
+  .option-box > li {
+    position: relative;
+    color: #ffffff;
+    width: 40%;
+    margin: 0px 3px;
+    cursor: pointer;
+    margin-bottom: 9px;
+    padding: 8px 12px;
+    font-size: 12px;
+    display: inline-block;
+    background-color: #0055d4;
+    text-transform: uppercase;
+    transition: var(--transition);
+    &:hover {
+      background-color: var(--black);
+    }
+  }
+
+  .purchase-box {
+    position: relative;
+    padding: 20px 15px 0px;
+    max-width: 270px;
+    margin-inline: auto;
+  }
+
+  .purchase-box__btn {
+    position: relative;
+    color: #ffffff;
+    width: 50%;
+    margin: 0;
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 12px;
+    display: inline-block;
+    background-color: #0055d4;
+    text-transform: uppercase;
+    margin-top: 25px;
+    transition: all 500ms ease;
+    &:hover {
+      background-color: var(--black);
+    }
+  }
+}
+
+.color-palate.visible-palate {
+  transform: translateX(0px);
+}
+
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
+}
+/* ==== 
+ --------- (5.21) color switcher styles start ---------
+ ==== */

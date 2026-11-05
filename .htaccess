@@ -1,0 +1,16 @@
+RewriteEngine On
+RewriteBase /
+
+# Force UTF-8 encoding
+AddDefaultCharset UTF-8
+
+# Remove .php extension from URLs
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^(.*?)/?$ $1.php [L]
+
+# Redirect root to index.php if needed (usually handled by DirectoryIndex)
+DirectoryIndex index.php
+
+# Prevent listing directories
+Options -Indexes

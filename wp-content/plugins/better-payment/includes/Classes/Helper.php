@@ -1,0 +1,447 @@
+<?php
+
+namespace Better_Payment\Lite\Classes;
+
+use Better_Payment\Lite\Controller;
+use Better_Payment\Lite\Traits\Helper as TraitsHelper;
+
+/**
+ * Exit if accessed directly
+ */
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * This class responsible for database work
+ * using wordpress functionality 
+ * get_option and update_option.
+ */
+class Helper extends Controller
+{
+    use TraitsHelper;
+
+    /**
+	 * check is plugin active or not
+	 *
+	 * @param $plugin
+	 * @return bool
+     * @since 0.0.2
+	 */
+    public function is_plugin_active($plugin) {
+	    if ( !function_exists( 'is_plugin_active' ) ){
+		    require_once( ABSPATH . '/wp-admin/includes/plugin.php' );
+        }
+
+	    return is_plugin_active( $plugin );
+    }
+
+    public static function sanitize_bp_field($key, $arr, $default_value='', $type='text'){
+        $value = $default_value;
+        
+        if( !empty( $arr[ $key ] ) ) {
+            $value = $arr[ $key ];
+
+            switch($type){
+                case 'text':
+                    $value = sanitize_text_field( $value );
+                    break;
+                case 'email':
+                    $value = sanitize_email( $value );
+                    break;
+                case 'textarea':
+                    $value = sanitize_textarea_field( $value );
+                    break;
+                default: 
+                    $value = sanitize_text_field( $value );
+                    break;
+            }
+        }
+
+        return $value;
+    }
+
+    /**
+     * Get widget settings
+     *
+     * @since 0.0.1
+     */
+    public function get_better_payment_widget_settings( $page_id, $widget_id ) {
+        $document = \Elementor\Plugin::$instance->documents->get( $page_id );
+        $settings = [];
+        if ( $document ) {
+            $elements    = \Elementor\Plugin::instance()->documents->get( $page_id )->get_elements_data();
+            $widget_data = $this->find_element_recursive( $elements, $widget_id );
+            if ( $widget_data ) {
+                $widget      = \Elementor\Plugin::instance()->elements_manager->create_element_instance( $widget_data );
+                if ( $widget ) {
+                    $settings = $widget->get_settings_for_display();
+                }
+            }
+            
+        }
+        return $settings;
+    }
+
+    /**
+     * Find element recursively
+     *
+     * @since 0.0.1
+     */
+    public function find_element_recursive( $elements, $form_id ) {
+
+        foreach ( $elements as $element ) {
+            if ( $form_id === $element[ 'id' ] ) {
+                return $element;
+            }
+
+            if ( !empty( $element[ 'elements' ] ) ) {
+                $element = $this->find_element_recursive( $element[ 'elements' ], $form_id );
+
+                if ( $element ) {
+                    return $element;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function titleToSnake($text, $divider = '_') {
+        // Handle null or empty values to prevent deprecated warnings.
+        if ( null === $text || '' === $text ) {
+            return 'n_a';
+        }
+
+        $text = (string) $text;
+        $text = preg_replace('~[^\pL\d]+~u', $divider, $text);
+        $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+        $text = preg_replace('~[^-\w]+~', '', $text);
+        $text = trim($text, $divider);
+        $text = preg_replace('~-+~', $divider, $text);
+        $text = strtolower($text);
+
+        if (empty($text)) {
+            return 'n_a';
+        }
+
+        return $text;
+    }
+
+    public function arrayToString($array, $separator = ', ', $extraString = ''){
+        $string = rtrim( implode($separator, $array ), $separator ) ;
+        if($extraString) {
+            $string .= $extraString;
+        }
+
+        return $string;
+    }
+
+    public function transaction_statuses_with_type(){
+        $statuses = [
+            'completed' => [
+                'statuses' => [
+                    'paid',
+                    'Completed',
+                    'completed',
+                    // Stripe's own status for a fully-discounted / $0 Checkout
+                    // Session (100% coupon or sale, free trial). The payment
+                    // IS settled - there was simply nothing to charge - so it
+                    // must classify as completed, not fall through to the
+                    // unknown-status default. See Helper::get_type_by_transaction_status().
+                    'no_payment_required',
+                ],
+                'color' => '#0ECA86',
+            ], 
+            'processing' => [
+                'statuses' => [
+                    'pending',
+                    'Pending',
+                    NULL,
+                ],
+                'color' => '#FFDA15',
+            ],
+            'refunded' => [
+                'statuses' => [
+                    'refunded',
+                ],
+                'color' => '#FF0202',
+            ],
+            'unpaid' => [
+                'statuses' => [
+                    'unpaid',
+                ],
+                'color' => '#999',
+            ],
+            'all' => [
+                'statuses' => [
+                    'paid',
+                    'Completed',
+                    'completed',
+                    'no_payment_required',
+                    'unpaid',
+                    'refunded',
+                    'pending',
+                    'Pending',
+                    NULL,
+                ],
+                'color' => '#999',
+            ],
+        ];
+
+        return $statuses;
+    }
+
+    public function transaction_statuses_with_type_v2(){
+        $statuses = [
+            'completed' => [
+                'statuses' => [
+                    'paid',
+                    'Completed',
+                    'completed',
+                    'success',
+                    // See the v1 note: a $0 Stripe session settles as
+                    // 'no_payment_required'. Every status bucket is also a
+                    // `status IN (...)` filter in DB::get_transactions(), so a
+                    // status missing from BOTH 'completed' and 'incomplete'
+                    // is invisible under either tab while still showing on
+                    // the unfiltered list - which is exactly how a paid $0
+                    // order looked like a stray "Incomplete" row.
+                    'no_payment_required',
+                ],
+                'color' => '#0ECA86',
+            ], 
+            'incomplete' => [
+                'statuses' => [
+                    'pending',
+                    'Pending',
+                    'unpaid',
+                    'incomplete',
+                    'Incomplete',
+                    NULL,
+                ],
+                'color' => '#FFDA15',
+            ],
+            'refunded' => [
+                'statuses' => [
+                    'refunded',
+                ],
+                'color' => '#FF0202',
+            ],
+            'all' => [
+                'statuses' => [
+                    'paid',
+                    'Completed',
+                    'completed',
+                    'no_payment_required',
+                    'unpaid',
+                    'refunded',
+                    'pending',
+                    'Pending',
+                    'success',
+                    'incomplete',
+                    'Incomplete',
+                    NULL,
+                ],
+                'color' => '#999',
+            ],
+        ];
+
+        return $statuses;
+    }
+
+    public function get_type_by_transaction_status($status = '', $version = 'v1'){
+        if('v1' === $version){
+            $statuses = $this->transaction_statuses_with_type();
+        } else {
+            $statuses = $this->transaction_statuses_with_type_v2();
+        }
+
+        $status_type = '';
+        if(!empty($status)){
+            foreach($statuses as $type => $statuses_and_color){
+                if(in_array($status, $statuses_and_color['statuses'])){
+                    $status_type = $type;
+                    break;
+                }
+            }
+        }
+
+        if($status === '' || $status === NULL){
+            $status_type = 'incomplete';
+        }
+
+        return $status_type;
+    }
+
+    public function get_color_by_transaction_status($status = '', $version = 'v1'){
+        if('v1' === $version){
+            $statuses = $this->transaction_statuses_with_type();
+        } else {
+            $statuses = $this->transaction_statuses_with_type_v2();
+        }
+
+        $color = '#999';
+        if(!empty($status)){
+            foreach($statuses as $type => $statuses_and_color){
+                if(in_array($status, $statuses_and_color['statuses'])){
+                    $color = $statuses_and_color['color'];
+                    break;
+                }
+            }
+        }
+
+        if($status === '' || $status === NULL){
+            $color = '#FFDA15'; //incomplete
+        }
+
+        return $color;
+        
+    }
+
+    public function get_color_by_transaction_type($status_type = '', $version = 'v1'){
+        if('v1' === $version){
+            $statuses = $this->transaction_statuses_with_type();
+        } else {
+            $statuses = $this->transaction_statuses_with_type_v2();
+        }
+
+        $color = '';
+        if(!empty($status_type)){
+            foreach($statuses as $type => $statuses_and_color){
+                if($type == $status_type){
+                    $color = $statuses_and_color['color'];
+                    break;
+                }
+            }
+        }
+
+        return $color;
+    }
+
+    public function get_statuses_by_transaction_type($status_type = 'all', $version = 'v1'){
+        if('v1' === $version){
+            $statuses = $this->transaction_statuses_with_type();
+        } else {
+            $statuses = $this->transaction_statuses_with_type_v2();
+        }
+
+        $transaction_statuses = [];
+        if(!empty($status_type)){
+            foreach($statuses as $type => $statuses_and_color){
+                if($type == $status_type){
+                    $transaction_statuses = $statuses_and_color['statuses'];
+                    break;
+                }
+            }
+        }
+
+        return $transaction_statuses;
+    }
+    
+    public function get_transaction_types($version = 'v1'){
+        if('v1' === $version){
+            $statuses = $this->transaction_statuses_with_type();
+        } else {
+            $statuses = $this->transaction_statuses_with_type_v2();
+        }
+
+        $statuses_types = array_keys($statuses);
+        
+        return $statuses_types;
+    }
+
+    /**
+     * Get interval text for recurring and split payment
+     *
+     * @since 1.3.0
+     */
+    public function get_interval_text( $interval = '' ){
+        $interval_text = '';
+
+        switch( $interval ) {
+            case 'day':
+                $interval_text = 'Daily';
+                break;
+
+            case 'month': 
+            case 'year':
+                $interval_text = $interval . 'ly';
+                break;
+
+            default :
+                $interval_text = ! empty( $interval ) ? "Per " . esc_html( $interval ) : "";
+                break;
+        }
+
+        return esc_html( ucfirst( $interval_text ) );
+    }
+
+    /**
+     * Output the page header, compatible with both classic and block themes.
+     *
+     * Block themes don't use get_header() — they rely on block template parts.
+     * We detect this with wp_is_block_theme() and render the header template
+     * part via do_blocks() so it appears correctly on CPT single pages that
+     * bypass the theme's block templates.
+     *
+     * @param string $block_header Pre-rendered header markup from do_blocks() (block themes only).
+     * @return void
+     */
+    public static function render_header( string $block_header = '' ): void {
+        if ( function_exists( 'wp_is_block_theme' ) && wp_is_block_theme() ) {
+            ?>
+            <!doctype html>
+            <html <?php language_attributes(); ?>>
+            <head>
+                <meta charset="<?php bloginfo( 'charset' ); ?>">
+                <?php wp_head(); ?>
+            </head>
+            <body <?php body_class(); ?>>
+            <?php
+            wp_body_open();
+            echo $block_header; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        } else {
+            get_header();
+        }
+    }
+
+    /**
+     * Output the page footer, compatible with both classic and block themes.
+     *
+     * @param string $block_footer Pre-rendered footer markup from do_blocks() (block themes only).
+     * @return void
+     */
+    public static function render_footer( string $block_footer = '' ): void {
+        if ( function_exists( 'wp_is_block_theme' ) && wp_is_block_theme() ) {
+            echo $block_footer; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            wp_footer();
+            ?>
+            </body>
+            </html>
+            <?php
+        } else {
+            get_footer();
+        }
+    }
+}
+
+
+// Helper Functions
+if ( ! function_exists( 'better_payment_dd' ) ) {
+    function better_payment_dd( $data, $show_query = 0, $print_only = 0 ) {
+        global $wpdb;
+
+        if ( 1 === $show_query ) {
+            echo wp_kses_post( $wpdb->last_query );
+            echo wp_kses_post( $wpdb->last_result );
+            echo wp_kses_post( $wpdb->last_error );
+        }
+
+        echo '<pre>';
+        print_r( $data ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
+        if ( ! $print_only ) {
+            wp_die( 'Printed!' );
+        }
+    }
+}

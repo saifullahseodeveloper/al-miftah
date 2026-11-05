@@ -1,0 +1,2016 @@
+<?php
+
+namespace EmbedPress\Gutenberg;
+
+use EmbedPress\Includes\Classes\Helper;
+use EmbedPress\Core\AssetManager;
+
+/**
+ * Block Manager for EmbedPress
+ * 
+ * Handles registration and management of all EmbedPress Gutenberg blocks
+ * using the new centralized structure.
+ */
+class BlockManager
+{
+
+    /**
+     * Instance of this class
+     */
+    private static $instance = null;
+
+    /**
+     * Blocks directory path
+     */
+    private $blocks_path;
+
+    /**
+     * Blocks directory URL
+     */
+    private $blocks_url;
+
+    /**
+     * Available blocks
+     */
+    private $available_blocks = [
+        'EmbedPress' => [
+            'name' => 'embedpress/embedpress',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render'],
+            'setting_key' => 'embedpress',
+            'supports_save_function' => true
+        ],
+        'embedpress-pdf' => [
+            'name' => 'embedpress/embedpress-pdf',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render_embedpress_pdf'],
+            'setting_key' => 'embedpress-pdf',
+            'supports_save_function' => true
+        ],
+        'document' => [
+            'name' => 'embedpress/document',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render_document'],
+            'setting_key' => 'document',
+            'supports_save_function' => true
+        ],
+        'embedpress-calendar' => [
+            'name' => 'embedpress/embedpress-calendar',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render_embedpress_calendar'],
+            'setting_key' => 'embedpress-calendar',
+            'supports_save_function' => true
+        ],
+        'youtube-block' => [
+            'name' => 'embedpress/youtube-block',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render_youtube_block'],
+            'setting_key' => 'youtube-block',
+            'supports_save_function' => false
+        ],
+        'wistia-block' => [
+            'name' => 'embedpress/wistia-block',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render_wistia_block'],
+            'setting_key' => 'wistia-block',
+            'supports_save_function' => false
+        ],
+        'pdf-gallery' => [
+            'name' => 'embedpress/pdf-gallery',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render_pdf_gallery'],
+            'setting_key' => 'pdf-gallery',
+            'supports_save_function' => true
+        ],
+        'google-reviews' => [
+            'name' => 'embedpress/google-reviews',
+            'render_callback' => [EmbedPressBlockRenderer::class, 'render_google_reviews'],
+            'setting_key' => 'google-reviews',
+            'supports_save_function' => false
+        ],
+    ];
+
+    /**
+     * Get instance
+     */
+    public static function get_instance()
+    {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    /**
+     * Constructor
+     */
+    private function __construct()
+    {
+        // Use src directory if it exists (development), otherwise use built assets (production/distribution)
+        if (file_exists(EMBEDPRESS_PATH_BASE . 'src/Blocks/')) {
+            $this->blocks_path = EMBEDPRESS_PATH_BASE . 'src/Blocks/';
+            $this->blocks_url = EMBEDPRESS_URL_STATIC . '../src/Blocks/';
+        } else {
+            // Fallback to built assets directory when src is not available (distribution)
+            $this->blocks_path = EMBEDPRESS_PATH_BASE . 'assets/blocks/';
+            $this->blocks_url = EMBEDPRESS_URL_ASSETS . 'blocks/';
+        }
+        
+
+        // AssetManager is initialized in Core/init.php
+
+        add_action('init', [$this, 'register_blocks']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_block_assets']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_editor_assets']);
+
+        // Register PDF gallery thumbnail AJAX handlers
+        // Uses Pdf_Thumbnail_Handler (no Elementor dependency) so this works with Gutenberg-only setups
+        add_action('wp_ajax_ep_upload_pdf_thumbnail', ['EmbedPress\Includes\Classes\Pdf_Thumbnail_Handler', 'ajax_upload_pdf_thumbnail']);
+        add_action('wp_ajax_ep_generate_pdf_thumbnail', ['EmbedPress\Includes\Classes\Pdf_Thumbnail_Handler', 'ajax_generate_pdf_thumbnail']);
+    }
+
+    /**
+     * Register all blocks
+     */
+    public function register_blocks()
+    {
+        if (!function_exists('register_block_type')) {
+            return;
+        }
+
+        $elements = (array) get_option(EMBEDPRESS_PLG_NAME . ":elements", []);
+        $g_blocks = isset($elements['gutenberg']) ? (array) $elements['gutenberg'] : [];
+
+        // Self-heal: make sure the DEFAULT-ON blocks are enabled. This runs even
+        // when a `gutenberg` key already exists, so blocks added in a later
+        // release (e.g. google-reviews, pdf-gallery) appear on EXISTING installs
+        // after an update — without it, a site whose saved element list predates
+        // the new block never registers it (the block silently never shows in the
+        // inserter). ensure_default_blocks_enabled() is idempotent (adds only
+        // missing keys), so calling it every load is safe + cheap. We re-read +
+        // only persist when something was actually added (see the method).
+        $missing_default = false;
+        foreach ($this->default_enabled_blocks() as $key) {
+            // array_key_exists (not isset): a block the user explicitly disabled
+            // is stored as '' — that's "present", so we must NOT treat it as
+            // missing and re-enable it. Only a key never seen before triggers the
+            // self-heal.
+            if (!array_key_exists($key, $g_blocks)) { $missing_default = true; break; }
+        }
+        if (empty($elements) || !isset($elements['gutenberg']) || $missing_default) {
+            $this->ensure_default_blocks_enabled();
+            $elements = (array) get_option(EMBEDPRESS_PLG_NAME . ":elements", []);
+            $g_blocks = isset($elements['gutenberg']) ? (array) $elements['gutenberg'] : [];
+        }
+
+        foreach ($this->available_blocks as $block_folder => $block_config) {
+            $setting_key = $block_config['setting_key'];
+
+            // Check if block is enabled in settings
+            if (!empty($g_blocks[$setting_key])) {
+                $this->register_single_block($block_folder, $block_config);
+            } else {
+                // Unregister if disabled
+                if (\WP_Block_Type_Registry::get_instance()->is_registered($block_config['name'])) {
+                    unregister_block_type($block_config['name']);
+                }
+            }
+        }
+    }
+
+    /**
+     * Register a single block
+     */
+    private function register_single_block($block_folder, $block_config)
+    {
+        $block_path = $this->blocks_path . $block_folder;
+        $block_json_path = $block_path . '/block.json';
+
+        // Check if we're in development mode (src directory exists) or distribution mode
+        $is_development_mode = file_exists(EMBEDPRESS_PATH_BASE . 'src/Blocks/');
+
+        if ($is_development_mode && file_exists($block_json_path)) {
+            // Development mode: Use block.json files
+            $block_args = [];
+
+            // For blocks that support save function, render_callback is only used for dynamic content
+            if (isset($block_config['render_callback'])) {
+                $block_args['render_callback'] = $block_config['render_callback'];
+            }
+
+            // Add attributes from the old system for compatibility
+            if ($block_config['name'] === 'embedpress/embedpress') {
+                $block_args['attributes'] = $this->get_embedpress_block_attributes();
+            } else if ($block_config['name'] === 'embedpress/embedpress-pdf') {
+                $block_args['attributes'] = $this->get_embedpress_pdf_attributes();
+            } else if ($block_config['name'] === 'embedpress/document') {
+                $block_args['attributes'] = $this->get_embedpress_doc_attributes();
+            } else if ($block_config['name'] === 'embedpress/youtube-block') {
+                $block_args['attributes'] = $this->get_youtube_block_attributes();
+            } else if ($block_config['name'] === 'embedpress/wistia-block') {
+                $block_args['attributes'] = $this->get_wistia_block_attributes();
+            } else if ($block_config['name'] === 'embedpress/pdf-gallery') {
+                $block_args['attributes'] = $this->get_pdf_gallery_attributes();
+            }
+
+            register_block_type($block_json_path, $block_args);
+        } else {
+            // Distribution mode: Register blocks directly without block.json
+            // The JavaScript registration is handled by the bundled blocks.build.js file
+            // We only need to register the server-side render callbacks
+
+            $block_args = [
+                'render_callback' => $block_config['render_callback'] ?? null,
+            ];
+
+            // Attributes for server-side rendering. PREFER the block's shipped
+            // block.json (assets/blocks/<folder>/block.json — included in the
+            // dist zip): it carries the canonical, complete attribute schema, so
+            // any block — including ones with no hardcoded get_*_attributes()
+            // method, e.g. google-reviews — registers its full schema in
+            // distribution mode automatically. Without this, a dynamic block
+            // whose name has no else-if branch below registered with an EMPTY
+            // attribute set, so its saved/SSR attributes were dropped and the
+            // block broke after build (worked in dev because dev mode reads
+            // block.json directly).
+            if (file_exists($block_json_path)) {
+                $block_json = json_decode((string) file_get_contents($block_json_path), true);
+                if (is_array($block_json) && !empty($block_json['attributes']) && is_array($block_json['attributes'])) {
+                    $block_args['attributes'] = $block_json['attributes'];
+                }
+            }
+
+            // Fallback (and back-compat) — the hardcoded attribute maps for the
+            // older blocks that predate shipping a block.json. Only used when the
+            // block.json above didn't supply attributes.
+            if (empty($block_args['attributes'])) {
+                if ($block_config['name'] === 'embedpress/embedpress') {
+                    $block_args['attributes'] = $this->get_embedpress_block_attributes();
+                } else if ($block_config['name'] === 'embedpress/embedpress-pdf') {
+                    $block_args['attributes'] = $this->get_embedpress_pdf_attributes();
+                } else if ($block_config['name'] === 'embedpress/document') {
+                    $block_args['attributes'] = $this->get_embedpress_doc_attributes();
+                } else if ($block_config['name'] === 'embedpress/youtube-block') {
+                    $block_args['attributes'] = $this->get_youtube_block_attributes();
+                } else if ($block_config['name'] === 'embedpress/wistia-block') {
+                    $block_args['attributes'] = $this->get_wistia_block_attributes();
+                } else if ($block_config['name'] === 'embedpress/pdf-gallery') {
+                    $block_args['attributes'] = $this->get_pdf_gallery_attributes();
+                }
+            }
+
+            // Only register if not already registered by JavaScript
+            if (!\WP_Block_Type_Registry::get_instance()->is_registered($block_config['name'])) {
+                // Register from the block.json PATH (not just the name) when it
+                // ships in the zip. This lets WP auto-derive the attributes
+                // implied by `supports` — most importantly `align` (and
+                // `anchor`) — which are NOT listed under block.json's
+                // `attributes` key. Passing only a manual `attributes` array
+                // (as before) skipped that derivation, so a ServerSideRender
+                // block (e.g. google-reviews) hit the /wp/v2/block-renderer
+                // endpoint with `attributes[align]` and got a 400
+                // "Invalid parameter(s): attributes" — the production-only bug
+                // that didn't reproduce in dev (dev already registers via the
+                // block.json path). $block_args (render_callback + our explicit
+                // attribute schema) is merged on top of the file metadata.
+                if (file_exists($block_json_path)) {
+                    register_block_type($block_json_path, $block_args);
+                } else {
+                    register_block_type($block_config['name'], $block_args);
+                }
+            } else {
+                // Block already registered by JavaScript, just update the render callback
+                $block_type = \WP_Block_Type_Registry::get_instance()->get_registered($block_config['name']);
+                if ($block_type && isset($block_config['render_callback'])) {
+                    $block_type->render_callback = $block_config['render_callback'];
+                }
+            }
+        }
+    }
+
+    /**
+     * Get EmbedPress block attributes for compatibility
+     */
+    private function get_embedpress_block_attributes()
+    {
+        // Base attributes for all embeds
+        $attributes = [
+            // Core attributes
+            'clientId' => [
+                'type' => 'string',
+            ],
+            'url' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'providerName' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'embedHTML' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'height' => [
+                'type' => 'string',
+                'default' => '600'
+            ],
+            'width' => [
+                'type' => 'string',
+                'default' => '600'
+            ],
+
+            // State attributes
+            'editingURL' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'fetching' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'cannotEmbed' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'interactive' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'align' => [
+                'type' => 'string',
+                'default' => 'center'
+            ],
+
+
+            // Custom Player
+            'customPlayer' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerPreset' => [
+                'type' => 'string',
+                'default' => 'preset-default'
+            ],
+            'playerColor' => [
+                'type' => 'string',
+                'default' => '#5b4e96',
+            ],
+            'autoPause' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'posterThumbnail' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'playerPip' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playerRestart' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playerRewind' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerFastForward' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerTooltip' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playerHideControls' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerDownload' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            // Pro Custom Player features (PRD #81243). These MUST mirror
+            // attributes.js or the render_callback receives stripped values
+            // and the Pro filter (AdvancedPlayerHandlers::build_options)
+            // falls back to schema defaults — e.g. "Show Replay" stays on
+            // even when the editor toggle is off, because the false value
+            // never reaches PHP.
+            'playerAutoResume' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerAutoResumeThreshold' => [
+                'type' => 'number',
+                'default' => 30
+            ],
+            'playerEndScreen' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerEndScreenMode' => [
+                'type' => 'string',
+                'default' => 'message'
+            ],
+            'playerEndScreenMessage' => [
+                'type' => 'string',
+                'default' => 'Thanks for watching!'
+            ],
+            'playerEndScreenButtonText' => [
+                'type' => 'string',
+                'default' => 'Learn more'
+            ],
+            'playerEndScreenButtonUrl' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'playerEndScreenRedirectUrl' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'playerEndScreenRedirectNewWindow' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerEndScreenCountdown' => [
+                'type' => 'number',
+                'default' => 5
+            ],
+            'playerEndScreenShowReplay' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playerPrivacyMode' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerPrivacyMessage' => [
+                'type' => 'string',
+                'default' => 'Click to load. By playing, you accept third-party cookies.'
+            ],
+            'playerTimedCTA' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerTimedCTAItems' => [
+                'type' => 'array',
+                'default' => []
+            ],
+            'playerChapters' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerChaptersItems' => [
+                'type' => 'array',
+                'default' => []
+            ],
+            'playerChaptersShowTitle' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playerEmailCapture' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerEmailCaptureTime' => [
+                'type' => 'number',
+                'default' => 30
+            ],
+            'playerEmailCaptureUnit' => [
+                'type' => 'string',
+                'default' => 'seconds'
+            ],
+            'playerEmailCaptureHeadline' => [
+                'type' => 'string',
+                'default' => 'Enter your email to keep watching'
+            ],
+            'playerEmailCaptureRequireName' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerEmailCaptureAllowSkip' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerEmailCaptureButtonText' => [
+                'type' => 'string',
+                'default' => 'Continue'
+            ],
+            'playerActionLock' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerActionLockType' => [
+                'type' => 'string',
+                'default' => 'share'
+            ],
+            'playerActionLockHeadline' => [
+                'type' => 'string',
+                'default' => 'Unlock this video'
+            ],
+            'playerActionLockMessage' => [
+                'type' => 'string',
+                'default' => 'Complete the action below to continue watching.'
+            ],
+            'playerActionLockShareNetworks' => [
+                'type' => 'array',
+                'default' => ['facebook', 'twitter', 'linkedin']
+            ],
+            'playerActionLockShareUrl' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'playerActionLockLinkUrl' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'playerActionLockLinkText' => [
+                'type' => 'string',
+                'default' => 'Open link'
+            ],
+            'playerActionLockBypassAdmins' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playerAdaptiveStreaming' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerCountryRestriction' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerCountryMode' => [
+                'type' => 'string',
+                'default' => 'block'
+            ],
+            'playerCountryList' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'playerCountryMessage' => [
+                'type' => 'string',
+                'default' => 'Sorry, this video is not available in your country.'
+            ],
+            'playerLmsTracking' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerLmsThreshold' => [
+                'type' => 'number',
+                'default' => 90
+            ],
+            'playerHeatmap' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playerCdnEnabled' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'powered_by' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+        ];
+
+        // Add provider-specific attributes
+        $attributes = array_merge($attributes, $this->get_youtube_attributes());
+        $attributes = array_merge($attributes, $this->get_vimeo_attributes());
+        $attributes = array_merge($attributes, $this->get_wistia_attributes());
+        $attributes = array_merge($attributes, $this->get_instagram_attributes());
+        $attributes = array_merge($attributes, $this->get_calendly_attributes());
+        $attributes = array_merge($attributes, $this->get_podcast_attributes());
+        $attributes = array_merge($attributes, $this->get_google_photos_attributes());
+        $attributes = array_merge($attributes, $this->get_nft_attributes());
+        $attributes = array_merge($attributes, $this->get_ad_manager_attributes());
+        $attributes = array_merge($attributes, $this->get_content_protection_attributes());
+        $attributes = array_merge($attributes, $this->get_social_sharing_attributes());
+        $attributes = array_merge($attributes, $this->get_custom_branding_attributes());
+
+        return $attributes;
+    }
+
+    /**
+     * Get PDF-specific attributes
+     */
+    private function get_embedpress_pdf_attributes()
+    {
+        $attributes = [
+            'clientId' => [
+                'type' => 'string',
+            ],
+            'id' => [
+                'type' => 'string'
+            ],
+            'href' => [
+                'type' => 'string'
+            ],
+            'fileName' => [
+                'type' => 'string',
+            ],
+            'mime' => [
+                'type' => 'string',
+            ],
+            'url' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'height' => [
+                'type' => 'string',
+                'default' => '600'
+            ],
+            'width' => [
+                'type' => 'string',
+                'default' => '600'
+            ],
+            'pageNumber' => [
+                'type' => 'number',
+                'default' => 1
+            ],
+            'viewerStyle' => [
+                'type' => 'string',
+                'default' => 'modern'
+            ],
+            'displayMode' => [
+                'type' => 'string',
+                'default' => 'inline'
+            ],
+            'lightboxThumbnail' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'lightboxAlign' => [
+                'type' => 'string',
+                'default' => 'left'
+            ],
+            'triggerText' => [
+                'type' => 'string',
+                'default' => 'View PDF'
+            ],
+            'triggerColor' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'triggerBgColor' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'triggerFontSize' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'triggerBorderRadius' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'themeMode' => [
+                'type' => 'string',
+                'default' => 'default'
+            ],
+            'customColor' => [
+                'type' => 'string',
+                'default' => '#403A81'
+            ],
+            'toolbar' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'presentation' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'lazyLoad' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'position' => [
+                'type' => 'string',
+                'default' => 'top'
+            ],
+            'flipbook_toolbar_position' => [
+                'type' => 'string',
+                'default' => 'bottom'
+            ],
+            'download' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'open' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'copy_text' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'add_text' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'draw' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'add_image' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'zoomIn' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'zoomOut' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'fitView' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'bookmark' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'doc_details' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'doc_rotation' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'unitoption' => [
+                'type' => 'string',
+                'default' => '%'
+            ],
+            'powered_by' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'watermarkText' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'watermarkFontSize' => [
+                'type' => 'number',
+                'default' => 48
+            ],
+            'watermarkColor' => [
+                'type' => 'string',
+                'default' => '#000000'
+            ],
+            'watermarkOpacity' => [
+                'type' => 'number',
+                'default' => 15
+            ],
+            'watermarkStyle' => [
+                'type' => 'string',
+                'default' => 'center'
+            ],
+
+        ];
+
+        $attributes = array_merge($attributes, $this->get_content_protection_attributes());
+        $attributes = array_merge($attributes, $this->get_social_sharing_attributes());
+        $attributes = array_merge($attributes, $this->get_custom_branding_attributes());
+
+        return $attributes;
+    }
+
+    /**
+     * Get PDF Gallery block attributes
+     */
+    private function get_pdf_gallery_attributes()
+    {
+        return [
+            'clientId' => ['type' => 'string'],
+            'pdfItems' => ['type' => 'array', 'default' => []],
+            'layout' => ['type' => 'string', 'default' => 'grid'],
+            'columns' => ['type' => 'number', 'default' => 3],
+            'columnsTablet' => ['type' => 'number', 'default' => 2],
+            'columnsMobile' => ['type' => 'number', 'default' => 1],
+            'gap' => ['type' => 'number', 'default' => 20],
+            'thumbnailAspectRatio' => ['type' => 'string', 'default' => '4:3'],
+            'thumbnailBorderRadius' => ['type' => 'number', 'default' => 8],
+            'carouselAutoplay' => ['type' => 'boolean', 'default' => false],
+            'carouselAutoplaySpeed' => ['type' => 'number', 'default' => 3000],
+            'carouselLoop' => ['type' => 'boolean', 'default' => true],
+            'carouselArrows' => ['type' => 'boolean', 'default' => true],
+            'carouselDots' => ['type' => 'boolean', 'default' => false],
+            'slidesPerView' => ['type' => 'number', 'default' => 3],
+            'viewerStyle' => ['type' => 'string', 'default' => 'modern'],
+            'themeMode' => ['type' => 'string', 'default' => 'default'],
+            'customColor' => ['type' => 'string', 'default' => '#403A81'],
+            'toolbar' => ['type' => 'boolean', 'default' => true],
+            'position' => ['type' => 'string', 'default' => 'top'],
+            'flipbook_toolbar_position' => ['type' => 'string', 'default' => 'bottom'],
+            'presentation' => ['type' => 'boolean', 'default' => true],
+            'download' => ['type' => 'boolean', 'default' => true],
+            'copy_text' => ['type' => 'boolean', 'default' => true],
+            'draw' => ['type' => 'boolean', 'default' => true],
+            'add_text' => ['type' => 'boolean', 'default' => true],
+            'add_image' => ['type' => 'boolean', 'default' => true],
+            'doc_rotation' => ['type' => 'boolean', 'default' => true],
+            'doc_details' => ['type' => 'boolean', 'default' => true],
+            'zoomIn' => ['type' => 'boolean', 'default' => true],
+            'zoomOut' => ['type' => 'boolean', 'default' => true],
+            'fitView' => ['type' => 'boolean', 'default' => true],
+            'bookmark' => ['type' => 'boolean', 'default' => true],
+            'powered_by' => ['type' => 'boolean', 'default' => true],
+            'watermarkText' => ['type' => 'string', 'default' => ''],
+            'watermarkFontSize' => ['type' => 'number', 'default' => 48],
+            'watermarkColor' => ['type' => 'string', 'default' => '#000000'],
+            'watermarkOpacity' => ['type' => 'number', 'default' => 15],
+            'watermarkStyle' => ['type' => 'string', 'default' => 'center'],
+        ];
+    }
+
+    private function get_embedpress_doc_attributes()
+    {
+        $attributes = [
+            'clientId' => [
+                'type' => 'string',
+            ],
+
+            'id' => [
+                'type' => 'string',
+            ],
+            'href' => [
+                'type' => 'string',
+            ],
+            'height' => [
+                'type' => 'string',
+                'default' => '600'
+            ],
+            'width' => [
+                'type' => 'string',
+                'default' => '600'
+            ],
+            'fileName' => [
+                'type' => 'string',
+            ],
+            'mime' => [
+                'type' => 'string',
+            ],
+            'powered_by' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'presentation' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'docViewer' => [
+                'type' => 'string',
+                'default' => 'custom',
+            ],
+            'themeMode' => [
+                'type' => 'string',
+                'default' => 'default',
+            ],
+            'customColor' => [
+                'type' => 'string',
+                'default' => '#403A81',
+            ],
+            'position' => [
+                'type' => 'string',
+                'default' => 'top',
+            ],
+            'download' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'open' => [
+                'type' => 'boolean',
+                'default' => false,
+            ],
+            'copy_text' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'draw' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'toolbar' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'doc_rotation' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+        ];
+
+        $attributes = array_merge($attributes, $this->get_content_protection_attributes());
+        $attributes = array_merge($attributes, $this->get_social_sharing_attributes());
+        $attributes = array_merge($attributes, $this->get_custom_branding_attributes());
+
+        return $attributes;
+    }
+
+    /**
+     * Get YouTube block-specific attributes (for legacy youtube-block)
+     */
+    private function get_youtube_block_attributes()
+    {
+        return [
+            'url' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'iframeSrc' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'mediaId' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'align' => [
+                'type' => 'string',
+                'default' => 'center'
+            ]
+        ];
+    }
+
+    /**
+     * Get Wistia block-specific attributes (for legacy wistia-block)
+     */
+    private function get_wistia_block_attributes()
+    {
+        return [
+            'url' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'iframeSrc' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'align' => [
+                'type' => 'string',
+                'default' => 'center'
+            ]
+        ];
+    }
+
+    /**
+     * Get ContenProtection-specific attributes
+     */
+    private function get_content_protection_attributes()
+    {
+        return [
+            'lockContent' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'protectionType' => [
+                'type' => 'string',
+                'default' => 'password'
+            ],
+            'userRole' => [
+                'type' => 'array',
+                'default' => []
+            ],
+            'protectionMessage' => [
+                'type' => 'string',
+                'default' => 'You do not have access to this content. Only users with the following roles can view it: [user_roles]'
+            ],
+            'contentPassword' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'lockHeading' => [
+                'type' => 'string',
+                'default' => 'Content Locked'
+            ],
+            'lockSubHeading' => [
+                'type' => 'string',
+                'default' => 'Content is locked and requires password to access it.'
+            ],
+            'lockErrorMessage' => [
+                'type' => 'string',
+                'default' => 'Oops, that wasn\'t the right password. Try again.'
+            ],
+            'passwordPlaceholder' => [
+                'type' => 'string',
+                'default' => 'Password'
+            ],
+            'submitButtonText' => [
+                'type' => 'string',
+                'default' => 'Unlock'
+            ],
+            'submitUnlockingText' => [
+                'type' => 'string',
+                'default' => 'Unlocking'
+            ],
+            'enableFooterMessage' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'footerMessage' => [
+                'type' => 'string',
+                'default' => 'In case you don\'t have the password, kindly reach out to content owner or administrator to request access.'
+            ],
+        ];
+    }
+
+    /**
+     * Get SocialSharing-specific attributes
+     */
+    private function get_social_sharing_attributes()
+    {
+        return [
+            'contentShare' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'sharePosition' => [
+                'type' => 'string',
+                'default' => 'right'
+            ],
+            'customTitle' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'customDescription' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'customThumbnail' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'shareFacebook' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'shareTwitter' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'sharePinterest' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'shareLinkedin' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+        ];
+    }
+
+    /**
+     * Get CustomBranding-specific attributes
+     */
+    private function get_custom_branding_attributes()
+    {
+        return [
+            'customlogo' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'logoX' => [
+                'type' => 'number',
+                'default' => 5
+            ],
+            'logoY' => [
+                'type' => 'number',
+                'default' => 10
+            ],
+            'customlogoUrl' => [
+                'type' => 'string',
+            ],
+            'logoOpacity' => [
+                'type' => 'number',
+                'default' => 0.6
+            ],
+        ];
+    }
+
+
+    /**
+     * Get YouTube-specific attributes
+     */
+    private function get_youtube_attributes()
+    {
+        return [
+            // YouTube specific attributes
+            'ispagination' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'ytChannelLayout' => [
+                // CHANNEL URLs only. Empty default lets the provider use the
+                // gallery default. Inspector's explicit pick still overrides.
+                'type' => 'string',
+                'default' => ''
+            ],
+            'ytPlaylistLayout' => [
+                // PLAYLIST URLs only — separate dropdown so channel pick can't
+                // leak in. Values: '' (default: queue) | 'queue' | 'theatre'.
+                'type' => 'string',
+                'default' => ''
+            ],
+            'ytPlaylistMode' => [
+                // 'playlist' renders the queue/gallery/list/grid/carousel UI for
+                // any URL with list=…. 'single' renders just the v= video.
+                'type' => 'string',
+                'default' => 'playlist'
+            ],
+            'pagesize' => [
+                'type' => 'string',
+                'default' => '6'
+            ],
+            'columns' => [
+                'type' => 'string',
+                'default' => '3'
+            ],
+            'gapbetweenvideos' => [
+                'type' => 'number',
+                'default' => 30
+            ],
+            'videosize' => [
+                'type' => 'string',
+                'default' => 'fixed',
+            ],
+            'starttime' => [
+                'type' => 'string',
+            ],
+            'endtime' => [
+                'type' => 'string',
+            ],
+            'autoplay' => [
+                'type' => 'boolean',
+                'default' => false,
+            ],
+            'muteVideo' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'controls' => [
+                'type' => 'string',
+            ],
+            'fullscreen' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'videoannotations' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'progressbarcolor' => [
+                'type' => 'string',
+                'default' => 'red'
+            ],
+            'closedcaptions' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'modestbranding' => [
+                'type' => 'string',
+            ],
+            'relatedvideos' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'showinfo' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'showLoop' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+        ];
+    }
+
+    /**
+     * Get Vimeo-specific attributes
+     */
+    private function get_vimeo_attributes()
+    {
+        return [
+            'vimeoAutoplay' => [
+                'type' => 'boolean',
+                'default' => false,
+            ],
+            'vimeoLoop' => [
+                'type' => 'boolean',
+                'default' => false,
+            ],
+            'vimeoPortrait' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'vimeoTitle' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'vimeoByline' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'vimeoColor' => [
+                'type' => 'string',
+                'default' => '#00adef'
+            ],
+            'vimeoDnt' => [
+                'type' => 'boolean',
+                'default' => false,
+            ],
+            // Additional Vimeo attributes
+            'vstarttime' => [
+                'type' => 'string',
+            ],
+            'vautoplay' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'vscheme' => [
+                'type' => 'string',
+            ],
+            'vtitle' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'vauthor' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'vavatar' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'vloop' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'vautopause' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'vdnt' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+        ];
+    }
+
+    /**
+     * Get Wistia-specific attributes
+     */
+    private function get_wistia_attributes()
+    {
+        return [
+            'wstarttime' => [
+                'type' => 'string',
+            ],
+            'wautoplay' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'scheme' => [
+                'type' => 'string',
+            ],
+            'captions' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playbutton' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'smallplaybutton' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playbar' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'resumable' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'wistiafocus' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'volumecontrol' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'volume' => [
+                'type' => 'number',
+                'default' => 100
+            ],
+            'rewind' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'wfullscreen' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+        ];
+    }
+
+    /**
+     * Get Instagram-specific attributes
+     */
+    private function get_instagram_attributes()
+    {
+        return [
+            'instaLayout' => [
+                'type' => 'string',
+                'default' => 'insta-grid'
+            ],
+            'carouselArrows' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'carouselSpacing' => [
+                'type' => 'string',
+                'default' => '0'
+            ],
+            'carouselDots' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            // Instagram Feed attributes
+            'instafeedFeedType' => [
+                'type' => 'string',
+                'default' => 'user_account_type',
+            ],
+            'instafeedAccountType' => [
+                'type' => 'string',
+                'default' => 'personal',
+            ],
+            'instafeedProfileImage' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedProfileImageUrl' => [
+                'type' => 'string',
+                'default' => '',
+            ],
+            'instafeedFollowBtn' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedFollowBtnLabel' => [
+                'type' => 'string',
+                'default' => 'Follow',
+            ],
+            'instafeedPostsCount' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedPostsCountText' => [
+                'type' => 'string',
+                'default' => '[count] posts',
+            ],
+            'instafeedFollowersCount' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedFollowersCountText' => [
+                'type' => 'string',
+                'default' => '[count] followers',
+            ],
+            'instafeedAccName' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedColumns' => [
+                'type' => 'string',
+                'default' => '3'
+            ],
+            'instafeedColumnsGap' => [
+                'type' => 'string',
+                'default' => '5'
+            ],
+            'instafeedPostsPerPage' => [
+                'type' => 'string',
+                'default' => '12'
+            ],
+            'instafeedTab' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedLikesCount' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedCommentsCount' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedPopup' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedPopupFollowBtn' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedPopupFollowBtnLabel' => [
+                'type' => 'string',
+                'default' => 'Follow',
+            ],
+            'instafeedLoadmore' => [
+                'type' => 'boolean',
+                'default' => true,
+            ],
+            'instafeedLoadmoreLabel' => [
+                'type' => 'string',
+                'default' => 'Load More',
+            ],
+            'slidesShow' => [
+                'type' => 'string',
+                'default' => '4'
+            ],
+            'slidesScroll' => [
+                'type' => 'string',
+                'default' => '4'
+            ],
+            'carouselAutoplay' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'autoplaySpeed' => [
+                'type' => 'string',
+                'default' => '3000'
+            ],
+            'transitionSpeed' => [
+                'type' => 'string',
+                'default' => '1000'
+            ],
+            'carouselLoop' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+        ];
+    }
+
+    /**
+     * Get Calendly-specific attributes
+     */
+    private function get_calendly_attributes()
+    {
+        return [
+            'cEmbedType' => [
+                'type' => 'string',
+                'default' => 'inline'
+            ],
+            'calendlyData' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hideCookieBanner' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hideEventTypeDetails' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'cBackgroundColor' => [
+                'type' => 'string',
+                'default' => 'ffffff'
+            ],
+            'cTextColor' => [
+                'type' => 'string',
+                'default' => '1A1A1A'
+            ],
+            'cButtonLinkColor' => [
+                'type' => 'string',
+                'default' => '0000FF'
+            ],
+            'cPopupButtonText' => [
+                'type' => 'string',
+                'default' => 'Schedule time with me'
+            ],
+            'cPopupButtonBGColor' => [
+                'type' => 'string',
+                'default' => '0000FF'
+            ],
+            'cPopupButtonTextColor' => [
+                'type' => 'string',
+                'default' => 'FFFFFF'
+            ],
+            'cPopupLinkText' => [
+                'type' => 'string',
+                'default' => 'Schedule time with me'
+            ],
+        ];
+    }
+
+    /**
+     * Get Podcast-specific attributes (Spreaker)
+     */
+    private function get_podcast_attributes()
+    {
+        return [
+            // Spreaker attributes
+            'theme' => [
+                'type' => 'string',
+                'default' => 'light'
+            ],
+            'color' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'coverImageUrl' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'playlist' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playlistContinuous' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playlistLoop' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'playlistAutoupdate' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'chaptersImage' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'episodeImagePosition' => [
+                'type' => 'string',
+                'default' => 'right'
+            ],
+            'hideLikes' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hideComments' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hideSharing' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hideLogo' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hideEpisodeDescription' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hidePlaylistDescriptions' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hidePlaylistImages' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'hideDownload' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+        ];
+    }
+
+    /**
+     * Get Google Photos-specific attributes
+     */
+    private function get_google_photos_attributes()
+    {
+        return [
+            'mode' => [
+                'type' => 'string',
+                'default' => 'carousel'
+            ],
+            'imageWidth' => [
+                'type' => 'number',
+                'default' => 800
+            ],
+            'imageHeight' => [
+                'type' => 'number',
+                'default' => 600
+            ],
+            'showTitle' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'playerAutoplay' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'delay' => [
+                'type' => 'number',
+                'default' => 5
+            ],
+            'repeat' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'mediaitemsAspectRatio' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'mediaitemsEnlarge' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'mediaitemsStretch' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'mediaitemsCover' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'backgroundColor' => [
+                'type' => 'string',
+                'default' => '#000000'
+            ],
+            'expiration' => [
+                'type' => 'number',
+                'default' => 60
+            ],
+        ];
+    }
+
+    /**
+     * Get NFT/OpenSea-specific attributes
+     */
+    private function get_nft_attributes()
+    {
+        return [
+            'limit' => [
+                'type' => 'number',
+                'default' => 20
+            ],
+            'itemperpage' => [
+                'type' => 'number',
+                'default' => 9
+            ],
+            'loadmore' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'loadmorelabel' => [
+                'type' => 'text',
+                'default' => 'Load More'
+            ],
+            'orderby' => [
+                'type' => 'string',
+                'default' => 'desc'
+            ],
+            'gapbetweenitem' => [
+                'type' => 'number',
+                'default' => 30
+            ],
+            'layout' => [
+                'type' => 'string',
+                'default' => 'ep-grid'
+            ],
+            'preset' => [
+                'type' => 'string',
+                'default' => 'preset-default'
+            ],
+            'nftperrow' => [
+                'type' => 'number',
+                'default' => 3
+            ],
+            'collectionname' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'nftimage' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'nfttitle' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'nftcreator' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'prefix_nftcreator' => [
+                'type' => 'string',
+                'default' => 'Created By'
+            ],
+            'nftprice' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'prefix_nftprice' => [
+                'type' => 'string',
+                'default' => 'Current Price'
+            ],
+            'nftlastsale' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'prefix_nftlastsale' => [
+                'type' => 'string',
+                'default' => 'Last Sale'
+            ],
+            'nftbutton' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'nftrank' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'label_nftrank' => [
+                'type' => 'string',
+                'default' => 'Rank'
+            ],
+            'nftdetails' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'label_nftdetails' => [
+                'type' => 'string',
+                'default' => 'Details'
+            ],
+            'label_nftbutton' => [
+                'type' => 'string',
+                'default' => 'See Details'
+            ],
+            'alignment' => [
+                'type' => 'string',
+                'default' => 'ep-item-center'
+            ],
+            // Color and Typography for NFT
+            'itemBGColor' => [
+                'type' => 'string',
+            ],
+            'collectionNameColor' => [
+                'type' => 'string',
+            ],
+            'collectionNameFZ' => [
+                'type' => 'number',
+            ],
+            'titleColor' => [
+                'type' => 'string',
+            ],
+            'titleFontsize' => [
+                'type' => 'number',
+            ],
+            'creatorColor' => [
+                'type' => 'string',
+            ],
+            'creatorFontsize' => [
+                'type' => 'number',
+            ],
+            'creatorLinkColor' => [
+                'type' => 'string',
+            ],
+            'creatorLinkFontsize' => [
+                'type' => 'number',
+            ],
+            'priceLabelColor' => [
+                'type' => 'string',
+            ],
+            'priceLabelFontsize' => [
+                'type' => 'number',
+            ],
+            'priceColor' => [
+                'type' => 'string',
+            ],
+            'priceFontsize' => [
+                'type' => 'number',
+            ],
+            'priceUSDColor' => [
+                'type' => 'string',
+            ],
+            'priceUSDFontsize' => [
+                'type' => 'number',
+            ],
+            'lastSaleLabelColor' => [
+                'type' => 'string',
+            ],
+            'lastSaleLabelFontsize' => [
+                'type' => 'number',
+            ],
+            'lastSaleColor' => [
+                'type' => 'string',
+            ],
+            'lastSaleFontsize' => [
+                'type' => 'number',
+            ],
+            'lastSaleUSDColor' => [
+                'type' => 'string',
+            ],
+            'lastSaleUSDFontsize' => [
+                'type' => 'number',
+            ],
+            'buttonTextColor' => [
+                'type' => 'string',
+            ],
+            'buttonBackgroundColor' => [
+                'type' => 'string',
+            ],
+            'buttonTextFontsize' => [
+                'type' => 'number',
+            ],
+            'loadmoreTextColor' => [
+                'type' => 'string',
+            ],
+            'loadmoreBackgroundColor' => [
+                'type' => 'string',
+            ],
+            'loadmoreTextFontsize' => [
+                'type' => 'number',
+            ],
+            'rankBtnColor' => [
+                'type' => 'string',
+            ],
+            'rankBtnBorderColor' => [
+                'type' => 'string',
+            ],
+            'rankBtnFZ' => [
+                'type' => 'number',
+            ],
+            'rankLabelColor' => [
+                'type' => 'string',
+            ],
+            'rankLabelFZ' => [
+                'type' => 'number',
+            ],
+            'detialTitleColor' => [
+                'type' => 'string',
+            ],
+            'detialTitleFZ' => [
+                'type' => 'number',
+            ],
+            'detailTextColor' => [
+                'type' => 'string',
+            ],
+            'detailTextLinkColor' => [
+                'type' => 'string',
+            ],
+            'detailTextFZ' => [
+                'type' => 'number',
+            ],
+        ];
+    }
+
+    /**
+     * Get Ad Manager-specific attributes
+     */
+    private function get_ad_manager_attributes()
+    {
+        return [
+            'adManager' => [
+                'type' => 'boolean',
+                'default' => false
+            ],
+            'adSource' => [
+                'type' => 'string',
+                'default' => 'video'
+            ],
+            'adContent' => [
+                'type' => 'object',
+            ],
+            'adFileUrl' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'adWidth' => [
+                'type' => 'string',
+                'default' => '300'
+            ],
+            'adHeight' => [
+                'type' => 'string',
+                'default' => '200'
+            ],
+            'adXPosition' => [
+                'type' => 'number',
+                'default' => 25
+            ],
+            'adYPosition' => [
+                'type' => 'number',
+                'default' => 10
+            ],
+            'adUrl' => [
+                'type' => 'string',
+                'default' => ''
+            ],
+            'adStart' => [
+                'type' => 'string',
+                'default' => '10'
+            ],
+            'adSkipButton' => [
+                'type' => 'boolean',
+                'default' => true
+            ],
+            'adSkipButtonAfter' => [
+                'type' => 'string',
+                'default' => '5'
+            ],
+        ];
+    }
+
+    /**
+     * Enqueue block assets for both frontend and backend
+     * Now handled by AssetManager
+     */
+    public function enqueue_block_assets()
+    {
+        // Assets are now handled by the centralized AssetManager
+        // This method is kept for backward compatibility
+    }
+
+    /**
+     * Enqueue editor assets
+     */
+    public function enqueue_editor_assets()
+    {
+        // Assets are now handled by AssetManager, but we still need to localize the script
+        $this->localize_editor_script();
+    }
+
+    /**
+     * Localize editor script with necessary data
+     * Note: Localization is now handled by LocalizationManager
+     */
+    private function localize_editor_script()
+    {
+        // Localization is now handled by LocalizationManager
+        // This method is kept for backward compatibility but functionality has been moved
+    }
+
+    /**
+     * Add a new block to the available blocks list
+     */
+    public function add_block($folder_name, $config)
+    {
+        $this->available_blocks[$folder_name] = $config;
+    }
+
+    /**
+     * The Gutenberg blocks that ship enabled by DEFAULT. Single source of
+     * truth, used both to seed a fresh install AND to self-heal existing
+     * installs when a new default block ships in a later release (see
+     * register_blocks()). Add a new default-on block's setting_key here.
+     */
+    private function default_enabled_blocks()
+    {
+        return [
+            'embedpress',
+            'embedpress-pdf',
+            'youtube-block',
+            'wistia-block',
+            'pdf-gallery',
+            'google-reviews',
+        ];
+    }
+
+    /**
+     * Ensure the default-on blocks are enabled. Idempotent — only adds keys that
+     * are MISSING, never flips a key the user explicitly turned off (an existing
+     * key, even value '', is left untouched). Safe to call on every load; it
+     * only persists when something actually changed. This is what makes a block
+     * added in a later release (google-reviews, pdf-gallery, …) appear on
+     * existing installs after an update instead of staying invisible.
+     */
+    private function ensure_default_blocks_enabled()
+    {
+        $elements = (array) get_option(EMBEDPRESS_PLG_NAME . ":elements", []);
+
+        if (!isset($elements['gutenberg'])) {
+            $elements['gutenberg'] = [];
+        }
+
+        $changed = false;
+        foreach ($this->default_enabled_blocks() as $key) {
+            // array_key_exists (not isset) so a user-disabled block stored as ''
+            // is respected — we only add a key that was never present at all.
+            if (!array_key_exists($key, $elements['gutenberg'])) {
+                $elements['gutenberg'][$key] = $key;
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            update_option(EMBEDPRESS_PLG_NAME . ":elements", $elements);
+        }
+    }
+
+    /**
+     * Get available blocks
+     */
+    public function get_available_blocks()
+    {
+        return $this->available_blocks;
+    }
+}

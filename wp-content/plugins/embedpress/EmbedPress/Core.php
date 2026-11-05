@@ -1,0 +1,1040 @@
+<?php
+
+namespace EmbedPress;
+
+use EmbedPress\Ends\Back\Handler as EndHandlerAdmin;
+use EmbedPress\Ends\Back\Settings\EmbedpressSettings;
+use EmbedPress\Ends\Front\Handler as EndHandlerPublic;
+use EmbedPress\Includes\Traits\Shared;
+use EmbedPress\Includes\Classes\FeatureNotices;
+use EmbedPress\Includes\Classes\FeaturePreviewModal;
+
+
+(defined('ABSPATH') && defined('EMBEDPRESS_IS_LOADED')) or die("No direct script access allowed.");
+
+/**
+ * Entity that glues together all pieces that the plugin is made of, for WordPress 5+.
+ *
+ * @package     EmbedPress
+ * @author      EmbedPress <help@embedpress.com>
+ * @copyright   Copyright (C) 2021 WPDeveloper. All rights reserved.
+ * @license     GPLv3 or later
+ * @since       1.0.0
+ */
+class Core
+{
+    use Shared;
+
+    /**
+     * The name of the plugin.
+     *
+     * @since   1.0.0
+     * @access  protected
+     *
+     * @var     string $pluginName The name of the plugin.
+     */
+    protected $pluginName;
+
+    /**
+     * The version of the plugin.
+     *
+     * @since   1.0.0
+     * @access  protected
+     *
+     * @var     string $pluginVersion The version of the plugin.
+     */
+    protected $pluginVersion;
+
+    /**
+     * An instance of the plugin loader.
+     *
+     * @since   1.0.0
+     * @access  protected
+     *
+     * @var     Loader $pluginVersion The version of the plugin.
+     */
+    protected $loaderInstance;
+
+    /**
+     * An associative array storing all registered/active EmbedPress plugins and their namespaces.
+     *
+     * @since   1.4.0
+     * @access  private
+     * @static
+     *
+     * @var     array
+     */
+    private static $plugins = [];
+
+    /**
+     * Initialize the plugin and set its properties.
+     *
+     * @return  void
+     * @since   1.0.0
+     *
+     */
+    public function __construct()
+    {
+        $this->pluginName = EMBEDPRESS_PLG_NAME;
+        $this->pluginVersion = EMBEDPRESS_VERSION;
+
+        $this->loaderInstance = new Loader();
+
+        add_action('in_admin_header', [$this, 'remove_admin_notice'], 99);
+        add_action('ep_admin_notices', [$this, 'embedpress_admin_notice']);
+        add_action('ep_admin_notices', [$this, 'admin_notice']);
+
+        add_filter('upload_mimes', [$this, 'extended_mime_types']);
+
+        add_action('wp_mail_failed', [$this, 'capture_mail_error'], 10, 1);
+    }
+
+    /**
+     * Method that retrieves the plugin name.
+     *
+     * @return  string
+     * @since   1.0.0
+     *
+     */
+    public function getPluginName()
+    {
+        return $this->pluginName;
+    }
+
+    /**
+     * Method that retrieves the plugin version.
+     *
+     * @return  string
+     * @since   1.0.0
+     *
+     */
+    public function getPluginVersion()
+    {
+        return $this->pluginVersion;
+    }
+
+    /**
+     * Method that retrieves the loader instance.
+     *
+     * @return  Loader
+     * @since   1.0.0
+     *
+     */
+    public function getLoader()
+    {
+        return $this->loaderInstance;
+    }
+
+    /**
+     * Method responsible to connect all required hooks in order to make the plugin work.
+     *
+     * @return  void
+     * @since   1.0.0
+     *
+     */
+    public function initialize()
+    {
+        global $wp_actions;
+        add_filter('oembed_providers', [$this, 'addOEmbedProviders']);
+        add_action('rest_api_init', [$this, 'registerOEmbedRestRoutes']);
+        add_action('rest_api_init', ['\\EmbedPress\\Includes\\Classes\\GoogleReviewsRestController', 'register']);
+        add_action('enqueue_block_editor_assets', ['\\EmbedPress\\Includes\\Classes\\GoogleReviewsRenderer', 'enqueue_editor_assets']);
+        add_action('elementor/preview/enqueue_styles', ['\\EmbedPress\\Includes\\Classes\\GoogleReviewsRenderer', 'enqueue_editor_assets']);
+        \EmbedPress\Includes\Classes\GoogleReviewsAdminPage::register();
+        // Apify-backed review fetching (the heavy "fetch all reviews" job + the
+        // sync ≤5 fallback) lives in free so the picker → refetch flow works
+        // without Pro. Pro extends this via filters (multi-place merge,
+        // advanced layouts, filtering, theme, schema) — see
+        // embedpress-pro/includes/Filters/Google_Reviews_Pro.php.
+        new \EmbedPress\Includes\Classes\GoogleReviewsApify();
+        // Hosted-proxy review fetch (api.embedpress.com/google-reviews/v1).
+        // Lowest-priority handler on the same filters — Apify (user token) wins
+        // when configured; managed runs as the zero-setup fallback.
+        new \EmbedPress\Includes\Classes\GoogleReviewsManaged();
+
+        // just disabled rating and feedback
+        // add_action('rest_api_init', [$this, 'register_feedback_email_endpoint']);
+
+
+        $this->start_plugin_tracking();
+
+        if (is_admin()) {
+            new EmbedpressSettings();
+
+            add_action('init', [$this, 'admin_notice']);
+
+            // Initialize Feature Notices from separate file
+            FeatureNotices::get_instance();
+
+            // Initialize the post-update "What's New" feature preview modal.
+            // Its dismiss AJAX + enqueue/render hooks self-register; release
+            // feature sets are registered from FeatureNotices::register_all_notices().
+            FeaturePreviewModal::get_instance();
+
+            add_filter(
+                'plugin_action_links_embedpress/embedpress.php',
+                ['\\EmbedPress\\Core', 'handleActionLinks'],
+                10,
+                2
+            );
+
+            // Old enqueue handlers removed - now handled by AssetManager
+            add_action('wp_ajax_embedpress_notice_dismiss', ['\\EmbedPress\\Ends\\Back\\Handler', 'embedpress_notice_dismiss']);
+            new EndHandlerAdmin($this->getPluginName(), $this->getPluginVersion());
+            // Asset enqueuing now handled by AssetManager - keeping only non-asset functionality
+        } else {
+            // Asset enqueuing now handled by AssetManager - keeping only non-asset functionality
+            new EndHandlerPublic($this->getPluginName(), $this->getPluginVersion());
+        }
+
+        // Add support for embeds on AMP pages
+        add_filter('pp_embed_parsed_content', ['\\EmbedPress\\AMP\\EmbedHandler', 'processParsedContent'], 10, 3);
+
+        // Add support for our embeds on Beaver Builder. Without this it only run the native embeds.
+        add_filter(
+            'fl_builder_before_render_shortcodes',
+            ['\\EmbedPress\\ThirdParty\\BeaverBuilder', 'before_render_shortcodes']
+        );
+        $this->loaderInstance->run();
+    }
+
+    /**
+     * Initialize minimal plugin functionality without script handlers
+     * Used when the new block system is active to avoid conflicts
+     *
+     * @return  void
+     * @since   4.2.7
+     */
+    public function initialize_minimal()
+    {
+
+        add_filter('oembed_providers', [$this, 'addOEmbedProviders']);
+        add_action('rest_api_init', [$this, 'registerOEmbedRestRoutes']);
+
+        // just disabled rating and feedback
+        // add_action('rest_api_init', [$this, 'register_feedback_email_endpoint']);
+
+        $this->start_plugin_tracking();
+
+        // Skip the admin and frontend handlers that enqueue scripts
+        // Only initialize core functionality
+
+
+        // Add support for embeds on AMP pages
+        add_filter('pp_embed_parsed_content', ['\\EmbedPress\\AMP\\EmbedHandler', 'processParsedContent'], 10, 3);
+
+        // Add support for our embeds on Beaver Builder
+        add_filter(
+            'fl_builder_before_render_shortcodes',
+            ['\\EmbedPress\\ThirdParty\\BeaverBuilder', 'before_render_shortcodes']
+        );
+
+        $this->loaderInstance->run();
+    }
+
+    /**
+     * @param $providers
+     *
+     * @return mixed
+     */
+    public function addOEmbedProviders($providers)
+    {
+        $newProviders = [
+            // Viddler
+            '#https?://(.+\.)?viddler\.com/v/.+#i' => 'viddler',
+
+            // Deviantart.com (http://www.deviantart.com)
+            //            '#https?://(.+\.)?deviantart\.com/art/.+#i' => 'devianart',
+            //            '#https?://(.+\.)?deviantart\.com/.+#i' => 'devianart',
+            //            '#https?://(.+\.)?deviantart\.com/.*/d.+#i' => 'devianart',
+            //            '#https?://(.+\.)?fav\.me/.+#i' => 'devianart',
+            //            '#https?://(.+\.)?sta\.sh/.+#i' => 'devianart',
+
+            // chirbit.com (http://www.chirbit.com/)
+            //'#https?://(.+\.)?chirb\.it/.+#i' => 'chirbit',
+
+
+            // nfb.ca (http://www.nfb.ca/)
+            //'#https?://(.+\.)?nfb\.ca/film/.+#i' => 'nfb',
+
+            // Dotsub (http://dotsub.com/)
+            //'#https?://(.+\.)?dotsub\.com/view/.+#i' => 'dotsub',
+
+            // Rdio (http://rdio.com/)
+            '#https?://(.+\.)?rdio\.com/(artist|people)/.+#i' => 'rdio',
+
+            // Sapo Videos (http://videos.sapo.pt)
+            //'#https?://(.+\.)?videos\.sapo\.pt/.+#i' => 'sapo',
+
+            // Official FM (http://official.fm)
+            '#https?://(.+\.)?official\.fm/(tracks|playlists)/.+#i' => 'officialfm',
+
+            // HuffDuffer (http://huffduffer.com)
+            //'#https?://(.+\.)?huffduffer\.com/.+#i' => 'huffduffer',
+
+            // Shoudio (http://shoudio.com)
+            //'#https?://(.+\.)?shoudio\.(com|io)/.+#i' => 'shoudio',
+
+            // Moby Picture (http://www.mobypicture.com)
+            '#https?://(.+\.)?mobypicture\.com/user/.+/view/.+#i' => 'mobypicture',
+            '#https?://(.+\.)?moby\.to/.+#i' => 'mobypicture',
+
+            // 23HQ (http://www.23hq.com)
+            //'#https?://(.+\.)?23hq\.com/.+/photo/.+#i' => '23hq',
+
+            // Cacoo (https://cacoo.com)
+            '#https?://(.+\.)?cacoo\.com/diagrams/.+#i' => 'cacoo',
+
+            // Dipity (http://www.dipity.com)
+            '#https?://(.+\.)?dipity\.com/.+#i' => 'dipity',
+
+            // Roomshare (http://roomshare.jp)
+            //'#https?://(.+\.)?roomshare\.jp/(en/)?post/.+#i' => 'roomshare',
+
+            // Crowd Ranking (http://crowdranking.com)
+            '#https?://(.+\.)?c9ng\.com/.+#i' => 'crowd',
+
+            // CircuitLab (https://www.circuitlab.com/)
+            //'#https?://(.+\.)?circuitlab\.com/circuit/.+#i' => 'circuitlab',
+
+            // Coub (http://coub.com/)
+            //'#https?://(.+\.)?coub\.com/(view|embed)/.+#i' => 'coub',
+
+            // Ustream (http://www.ustream.tv)
+            //'#https?://(.+\.)?ustream\.(tv|com)/.+#i' => 'ustream',
+
+            // Daily Mile (http://www.dailymile.com)
+            '#https?://(.+\.)?dailymile\.com/people/.+/entries/.+#i' => 'daily',
+
+            // Sketchfab (http://sketchfab.com)
+            '#https?://(.+\.)?sketchfab\.com/models/.+#i' => 'sketchfab',
+            '#https?://(.+\.)?sketchfab\.com/.+/folders/.+#i' => 'sketchfab',
+
+            // AudioSnaps (http://audiosnaps.com)
+            '#https?://(.+\.)?audiosnaps\.com/k/.+#i' => 'audiosnaps',
+
+            // RapidEngage (https://rapidengage.com)
+            '#https?://(.+\.)?rapidengage\.com/s/.+#i' => 'rapidengage',
+
+            // Getty Images (http://www.gettyimages.com/)
+            //'#https?://(.+\.)?gty\.im/.+#i' => 'gettyimages',
+            //'#https?://(.+\.)?gettyimages\.com/detail/photo/.+#i' => 'gettyimages',
+
+            // amCharts Live Editor (http://live.amcharts.com/)
+            //'#https?://(.+\.)?live\.amcharts\.com/.+#i' => 'amcharts',
+
+            // Infogram (https://infogr.am/)
+            //'#https?://(.+\.)?infogr\.am/.+#i' => 'infogram',
+            //(https://infogram.com/)
+            //'#https?://(.+\.)?infogram\.com/.+#i' => 'infogram',
+
+            // ChartBlocks (http://www.chartblocks.com/)
+            //'#https?://(.+\.)?public\.chartblocks\.com/c/.+#i' => 'chartblocks',
+
+            // ReleaseWire (http://www.releasewire.com/)
+            //'#https?://(.+\.)?rwire\.com/.+#i' => 'releasewire',
+
+            // ShortNote (https://www.shortnote.jp/)
+            //'#https?://(.+\.)?shortnote\.jp/view/notes/.+#i' => 'shortnote',
+
+            // EgliseInfo (http://egliseinfo.catholique.fr/)
+            '#https?://(.+\.)?egliseinfo\.catholique\.fr/.+#i' => 'egliseinfo',
+
+            // Silk (http://www.silk.co/)
+            '#https?://(.+\.)?silk\.co/explore/.+#i' => 'silk',
+            '#https?://(.+\.)?silk\.co/s/embed/.+#i' => 'silk',
+
+            // http://bambuser.com
+            '#https?://(.+\.)?bambuser\.com/v/.+#i' => 'bambuser',
+
+            // https://clyp.it
+            //'#https?://(.+\.)?clyp\.it/.+#i' => 'clyp',
+
+            // https://gist.github.com
+            // '#https?://(.+\.)?gist\.github\.com/.+#i' => 'github',
+
+            // https://portfolium.com
+            //'#https?://(.+\.)?portfolium\.com/.+#i' => 'portfolium',
+
+            // http://rutube.ru
+            '#https?://(.+\.)?rutube\.ru/video/.+#i' => 'rutube',
+
+            // http://www.videojug.com
+            '#https?://(.+\.)?videojug\.com/.+#i' => 'videojug',
+
+            // https://vine.com
+            //'#https?://(.+\.)?vine\.co/v/.+#i' => 'vine',
+
+            // Google Shortened Url
+            '#https?://(.+\.)?goo\.gl/.+#i' => 'google',
+
+            // Google Maps
+            //'#https?://(.+\.)?google\.com/maps/.+#i' => 'googlemaps',
+            //'#https?://(.+\.)?maps\.google\.com/.+#i' => 'googlemaps',
+
+            // Google Docs
+            //'#https?://(.+\.)?docs\.google\.com/(.+/)?(document|presentation|spreadsheets|forms|drawings)/.+#i' => 'googledocs',
+
+            // Twitch.tv
+            //'#https?://(.+\.)?twitch\.tv/.+#i' => 'twitch',
+
+            // Giphy
+            //'#https?://(.+\.)?giphy\.com/gifs/.+#i' => 'giphy',
+            //'#https?://(.+\.)?i\.giphy\.com/.+#i' => 'giphy',
+            //'#https?://(.+\.)?gph\.is/.+#i' => 'giphy',
+
+            // Wistia
+            //'#https?://(.+\.)?wistia\.com/medias/.+#i' => 'wistia',
+            //'#https?://(.+\.)?fast\.wistia\.com/embed/medias/.+#i\.jsonp' => 'wistia',
+        ];
+
+        /**
+         * ========================================
+         * Make sure the $wp_write global is set.
+         * This fix compatibility with JetPack, Classical Editor and Disable Gutenberg. JetPack makes
+         * the oembed_providers filter be called and this activates our class too, but one dependency
+         * of the rest_url method is not loaded yet.
+         */
+        global $wp_rewrite;
+
+        if (!class_exists('\\WP_Rewrite')) {
+            $path = ABSPATH . WPINC . '/class-wp-rewrite.php';
+            if (file_exists($path)) {
+                require_once $path;
+            }
+        }
+
+        if (!is_object($wp_rewrite)) {
+            $wp_rewrite = new \WP_Rewrite();
+            $_GLOBALS['wp_write'] = $wp_rewrite;
+        }
+        /*========================================*/
+
+        foreach ($newProviders as $url => &$data) {
+            $data = [
+                rest_url('embedpress/v1/oembed/' . $data),
+                true,
+            ];
+        }
+
+        $providers = array_merge($providers, $newProviders);
+
+        return $providers;
+    }
+
+    /**
+     * Register OEmbed Rest Routes
+     */
+    public function registerOEmbedRestRoutes()
+    {
+        register_rest_route(
+            'embedpress/v1',
+            '/oembed/(?P<provider>[a-zA-Z0-9\-]+)',
+            [
+                'methods' => \WP_REST_Server::READABLE,
+                'callback' => ['\\EmbedPress\\RestAPI', 'oembed'],
+                // This endpoint fetches an arbitrary user-supplied URL server-side
+                // (oEmbed discovery). Its only legitimate caller is the block editor
+                // preview, which always runs as a logged-in editor. Requiring
+                // edit_posts prevents unauthenticated SSRF via this route.
+                'permission_callback' => function () {
+                    return current_user_can('edit_posts');
+                },
+            ]
+        );
+        register_rest_route(
+            'embedpress/v1',
+            '/oembed/(?P<provider>[a-zA-Z0-9\-]+)',
+            [
+                'methods' => \WP_REST_Server::CREATABLE,
+                'callback' => ['\\EmbedPress\\RestAPI', 'oembed'],
+                'permission_callback' => function () {
+                    return current_user_can('edit_posts');
+                },
+            ]
+        );
+
+        // Queue infinite-scroll: returns a batch of rendered <li.ep-yt-queue__item>
+        // for the next page of a YouTube playlist. Public by design; the
+        // callback rejects requests without a valid server-issued `sig`.
+        register_rest_route(
+            'embedpress/v1',
+            '/youtube-playlist-items',
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => ['\\EmbedPress\\RestAPI', 'youtube_playlist_items'],
+                'permission_callback' => '__return_true',
+                'args'                => [
+                    'playlist_id' => ['required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+                    'page_token'  => ['required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+                    'page_size'   => ['required' => false, 'type' => 'integer', 'sanitize_callback' => 'absint'],
+                    'offset'      => ['required' => false, 'type' => 'integer', 'sanitize_callback' => 'absint'],
+                    'layout'      => ['required' => false, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+                    'sig'         => ['required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+                ],
+            ]
+        );
+
+        // Dynamic-source field enumerator (fbs-81736). Inspector drop-down
+        // calls this to populate field choices for the selected provider
+        // instead of asking the user to type the field key by hand.
+        register_rest_route(
+            'embedpress/v1',
+            '/dynamic-fields',
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => ['\\EmbedPress\\Includes\\Classes\\DynamicFieldResolver', 'rest_list_fields'],
+                'permission_callback' => function () {
+                    return current_user_can('edit_posts')
+                        && \EmbedPress\Includes\Classes\Helper::is_pro_features_enabled();
+                },
+                'args'                => [
+                    'source' => ['type' => 'string', 'required' => true],
+                ],
+            ]
+        );
+
+        // Dynamic-source value resolver (fbs-81736). The block editor calls this
+        // to live-preview the resolved custom-field URL instead of the saved
+        // placeholder, so the canvas matches the front-end render.
+        register_rest_route(
+            'embedpress/v1',
+            '/dynamic-resolve',
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => ['\\EmbedPress\\Includes\\Classes\\DynamicFieldResolver', 'rest_resolve_field'],
+                'permission_callback' => function () {
+                    return current_user_can('edit_posts')
+                        && \EmbedPress\Includes\Classes\Helper::is_pro_features_enabled();
+                },
+                'args'                => [
+                    'source'  => ['type' => 'string', 'required' => true],
+                    'field'   => ['type' => 'string', 'required' => true],
+                    'post_id' => ['type' => 'integer', 'required' => false],
+                ],
+            ]
+        );
+    }
+
+    public function send_user_feedback_email($request)
+    {
+        // Ensure we have a valid REST request object
+        if (!($request instanceof \WP_REST_Request)) {
+            return new \WP_REST_Response(['message' => 'Invalid request'], 400);
+        }
+
+        // CRITICAL: Check if feedback was already sent FIRST to prevent spam
+        $is_feedback_already_sent = get_option('embedpress_feedback_submited');
+        if ($is_feedback_already_sent) {
+            return new \WP_REST_Response(['message' => 'Feedback already submitted'], 200);
+        }
+
+        // Rate limiting: Only allow one request per IP per minute
+        $user_ip = $this->get_user_ip();
+        $rate_limit_key = 'embedpress_feedback_rate_limit_' . md5($user_ip);
+        if (get_transient($rate_limit_key)) {
+            return new \WP_REST_Response(['message' => 'Too many requests. Please try again later.'], 429);
+        }
+        set_transient($rate_limit_key, 2, MINUTE_IN_SECONDS);
+
+        // Verify user is logged in and has admin capabilities
+        if (!is_user_logged_in()) {
+            return new \WP_REST_Response(['message' => 'Unauthorized. You must be logged in.'], 401);
+        }
+
+        if (!current_user_can('manage_options')) {
+            return new \WP_REST_Response(['message' => 'Forbidden. Insufficient permissions.'], 403);
+        }
+
+        // Verify nonce for CSRF protection
+        $nonce = $request->get_header('X-WP-Nonce');
+
+        if (!$nonce || !wp_verify_nonce($nonce, 'wp_rest')) {
+            return new \WP_REST_Response(['message' => 'Invalid security token. Please refresh the page and try again.'], 403);
+        }
+
+
+        $params = $request->get_params();
+
+        // Safely extract and sanitize incoming params to avoid undefined index notices
+        $params = is_array($params) ? $params : [];
+        $user_email  = isset($params['email']) ? sanitize_email($params['email']) : '';
+        $user_name   = isset($params['name']) ? sanitize_text_field($params['name']) : '';
+        $user_rating = isset($params['rating']) ? intval($params['rating']) : 0;
+        $user_msg    = isset($params['message']) ? sanitize_textarea_field($params['message']) : '';
+
+        // Validate rating is within acceptable range
+        if ($user_rating < 1 || $user_rating > 5) {
+            return new \WP_REST_Response(['message' => 'Invalid rating value. Must be between 1 and 5.'], 400);
+        }
+
+        // Prevent submissions with empty/invalid user data (prevents N/A spam)
+        if (empty($user_email) || !is_email($user_email)) {
+            return new \WP_REST_Response(['message' => 'Valid email address is required.'], 400);
+        }
+
+        if (empty($user_name) || strlen(trim($user_name)) < 2) {
+            return new \WP_REST_Response(['message' => 'Valid name is required.'], 400);
+        }
+
+        // If the payload is completely empty, ignore to prevent blank/spam emails
+        $has_meaningful_input = false;
+
+        if ($user_rating > 0) {
+            if ($user_rating < 5) {
+                // description required
+                if (trim($user_msg) !== '') {
+                    $has_meaningful_input = true;
+                }
+            } else {
+                // rating is 5, description not required
+                $has_meaningful_input = true;
+            }
+        }
+
+        if (!$has_meaningful_input) {
+            return new \WP_REST_Response(['message' => 'No feedback content provided; ignored.'], 200);
+        }
+
+        // Prevent accidental duplicate submissions (double-clicks, quick retries)
+        $payload_hash = md5(json_encode([$user_email, $user_name, $user_rating, $user_msg]));
+        if (get_transient('embedpress_feedback_dupe_' . $payload_hash)) {
+            return new \WP_REST_Response(['message' => 'Duplicate feedback detected; already processed.'], 200);
+        }
+        set_transient('embedpress_feedback_dupe_' . $payload_hash, 1, 5 * MINUTE_IN_SECONDS);
+
+        $email_html   = $user_email ? '<a href="mailto:' . esc_attr($user_email) . '">' . esc_html($user_email) . '</a>' : 'N/A';
+        $rating_html  = $user_rating ? esc_html($user_rating) . ' ⭐️' : 'N/A';
+        $message_html = $user_msg !== '' ? nl2br(esc_html($user_msg)) : 'N/A';
+
+
+        $site_name   = get_bloginfo('name');
+        $site_url    = get_site_url();
+        $admin_email = get_option('admin_email');
+        $wp_version  = get_bloginfo('version');
+
+        $admin_user = get_user_by('ID', 1);
+        if ($admin_user) {
+            $first_name = get_user_meta($admin_user->ID, 'first_name', true);
+            $last_name = get_user_meta($admin_user->ID, 'last_name', true);
+
+            $admin_full_name = trim("$first_name $last_name");
+
+            // Fallback to display name if full name is not set
+            if (empty($admin_full_name)) {
+                $admin_full_name = $admin_user->display_name;
+            }
+        } else {
+            $admin_full_name = 'Unknown';
+        }
+
+        $to = 'akash@wpdeveloper.com, rasel@wpdeveloper.com, nahid@wpdeveloper.com, md-nahid-hasan@wpdeveloper.com'; // Replace with the recipient's email
+        $subject = '[IMPORTANT] New feedback received from an EmbedPress user.';
+
+        // HTML Email Template
+        $message = '<html><body style="font-family: Arial, sans-serif;  padding: 20px;">';
+        $message .= '<div style="max-width: 600px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: auto;">';
+        $message .= '<div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #ddd">';
+        $message .= '<img src="https://embedpress.com/wp-content/uploads/2025/03/logo.png" alt="EmbedPress" style="max-width: 150px;">';
+        $message .= '</div>';
+        $message .= '<h2 style="font-family: system-ui; color: #333; text-align: center;">Feedback Overview</h2>';
+        $message .= '<table style="font-family: system-ui; width: 100%; border-collapse: collapse; border: 1px solid #ddd">';
+
+        // Email
+        $message .= '<tr><td style="padding: 10px; font-weight: bold; width: 100px; border-bottom: 1px solid #ddd;">Email :</td>';
+        $message .= '<td style="padding: 10px; border-bottom: 1px solid #ddd;">' . $email_html . '</td></tr>';
+
+        // Rating
+        $message .= '<tr><td style="padding: 10px; font-weight: bold; width: 100px; border-bottom: 1px solid #ddd;">Rating :</td>';
+        $message .= '<td style="padding: 10px; border-bottom: 1px solid #ddd;">' . $rating_html . '</td></tr>';
+
+        // User
+        $message .= '<tr><td style="padding: 10px; font-weight: bold; width: 100px; border-bottom: 1px solid #ddd;">Name :</td>';
+        $message .= '<td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: 500;">' . esc_html($admin_full_name) . '</td></tr>';
+
+        // Pack
+        $message .= '<tr><td style="padding: 10px; font-weight: bold; width: 100px; border-bottom: 1px solid #ddd;">Site Url :</td>';
+        $message .= '<td style="padding: 10px; border-bottom: 1px solid #ddd;"><a target="_blank" href="' . esc_url($site_url) . '" style="color: blue;">' . esc_html($site_url) . '</a></td></tr>';
+
+        // Feedback
+        $message .= '<tr><td style="padding: 10px; font-weight: bold; width: 100px; display: flex;">Feedback :</td>';
+        $message .= '<td style="padding: 10px;">' . $message_html . '</td></tr>';
+
+        $message .= '</table>';
+        $message .= '</div></body></html>';
+
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . esc_html($site_name) . ' <' . sanitize_email($admin_email) . '>'
+        ];
+        if ($user_email) {
+            $reply_to = $user_name ? esc_html($user_name) . ' <' . sanitize_email($user_email) . '>' : sanitize_email($user_email);
+            $headers[] = 'Reply-To: ' . $reply_to;
+        }
+
+        // Send the email
+        $sent = wp_mail($to, $subject, $message, $headers);
+
+        if ($sent) {
+            update_option('embedpress_feedback_submited', true);
+
+            return new \WP_REST_Response(['message' => 'Email sent successfully!'], 200);
+        } else {
+            // Retrieve last error
+            $last_error = get_transient('embedpress_last_mail_error');
+            $error_message = 'Failed to send email.';
+            if ($last_error instanceof \WP_Error) {
+                $error_message = $last_error->get_error_message();
+            }
+
+            return new \WP_REST_Response([
+                'message' => $error_message
+            ], 422); // using 422 instead of 500
+        }
+    }
+
+    public function capture_mail_error($wp_error)
+    {
+        if ($wp_error instanceof \WP_Error) {
+            set_transient('embedpress_last_mail_error', $wp_error, 60);
+        }
+    }
+
+    /**
+     * Get user IP address safely
+     *
+     * @return string
+     */
+    private function get_user_ip()
+    {
+        $ip_keys = [
+            'HTTP_CF_CONNECTING_IP', // CloudFlare
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'REMOTE_ADDR'
+        ];
+
+        foreach ($ip_keys as $key) {
+            if (!empty($_SERVER[$key])) {
+                $ip = sanitize_text_field(wp_unslash($_SERVER[$key]));
+                // Handle comma-separated IPs (from proxies)
+                if (strpos($ip, ',') !== false) {
+                    $ip = trim(explode(',', $ip)[0]);
+                }
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+
+        return '0.0.0.0';
+    }
+
+    /**
+     * Permission callback for feedback endpoint
+     *
+     * We return true here to allow the request to reach our handler,
+     * where we perform detailed authentication and authorization checks
+     * with custom error messages.
+     *
+     * @return bool
+     */
+    public function feedback_permission_callback()
+    {
+        // Return true to allow request to reach handler
+        // Actual auth checks are done in send_user_feedback_email()
+        return true;
+    }
+
+
+    public function register_feedback_email_endpoint()
+    {
+        register_rest_route('embedpress/v1', '/send-feedback', [
+            'methods' => 'POST',
+            'callback' => [$this, 'send_user_feedback_email'],
+            'permission_callback' => [$this, 'feedback_permission_callback'],
+            'args' => [
+                'email' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_email',
+                ],
+                'name' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'rating' => [
+                    'required' => true,
+                    'type' => 'integer',
+                    'validate_callback' => function($param) {
+                        return is_numeric($param) && $param >= 1 && $param <= 5;
+                    }
+                ],
+                'message' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_textarea_field',
+                ],
+            ]
+        ]);
+    }
+
+
+
+    /**
+     * Callback called right after the plugin has been activated.
+     *
+     * @return  void
+     * @since   1.0.0
+     * @static
+     *
+     */
+    public static function onPluginActivationCallback()
+    {
+        $dirname = wp_get_upload_dir()['basedir'] . '/embedpress';
+        if (!file_exists($dirname)) {
+            mkdir($dirname, 0777);
+        }
+        flush_rewrite_rules();
+        embedpress_schedule_cache_cleanup();
+
+        // Trigger the setup wizard redirect only on a true fresh install. The
+        // 'embedpress_install_type' marker is set in EmbedpressSettings::__construct
+        // before any default settings are written, so it reliably distinguishes
+        // first-ever installs from re-activations after a plugin update.
+        $pro_active   = apply_filters( 'embedpress/is_allow_rander', false );
+        $install_type = get_option( 'embedpress_install_type', false );
+
+        if ( ! $pro_active && $install_type !== 'existing' ) {
+            $settings = get_option( EMBEDPRESS_PLG_NAME, [] );
+            $settings['need_first_time_redirect'] = true;
+            update_option( EMBEDPRESS_PLG_NAME, $settings );
+
+            // Clear any previous redirect done flag
+            delete_option( 'embedpress_activation_redirect_done' );
+
+        }
+
+        // "What's New" modal: show ONLY after an update from an older version,
+        // never on a brand-new install (a first-time user has nothing "new").
+        //
+        // Trust the 'embedpress_install_type' marker here — do NOT re-derive
+        // "prior data" from EMBEDPRESS_PLG_NAME. EmbedpressSettings::__construct
+        // runs during initialize() EARLIER in this same activation request and
+        // (a) computes install_type before writing anything, then (b) seeds
+        // default settings (turn_off_rating_help / turn_off_milestone / …) into
+        // EMBEDPRESS_PLG_NAME. So by the time this callback runs that option is
+        // ALWAYS non-empty — the old !empty() check made every fresh install look
+        // "existing" and wrongly fired the modal on top of the onboarding wizard.
+        //
+        // On a fresh install we stamp the current version as already seen so both
+        // the modal and the menu "New" badge stay suppressed; on an update we
+        // leave the markers unset and the modal fires once.
+        $seen_option = \EmbedPress\Includes\Classes\FeaturePreviewModal::SEEN_VERSION_OPTION;
+        if ( get_option( $seen_option, false ) === false ) {
+            if ( $install_type === 'existing' ) {
+                // Known existing user (update / re-activate) → let the modal fire once.
+                $is_fresh_install = false;
+            } elseif ( $install_type === 'fresh' ) {
+                // Known fresh install → suppress.
+                $is_fresh_install = true;
+            } else {
+                // install_type not computed this request (e.g. WP-CLI activation,
+                // where EmbedpressSettings didn't run and so has NOT polluted
+                // EMBEDPRESS_PLG_NAME) → direct data detection is reliable here.
+                $is_fresh_install = ! (
+                    (bool) get_option( 'embedpress_elements_updated', false )
+                    || ! empty( get_option( EMBEDPRESS_PLG_NAME, [] ) )
+                    || ! empty( get_option( EMBEDPRESS_PLG_NAME . ':elements', [] ) )
+                );
+            }
+
+            if ( $is_fresh_install ) {
+                $current_version = defined( 'EMBEDPRESS_VERSION' ) ? EMBEDPRESS_VERSION : '0.0.0';
+                // Suppress the modal (seen) AND the menu "New" badge (opened) — a
+                // first-time user has nothing "new" to be announced.
+                update_option( $seen_option, $current_version );
+                update_option(
+                    \EmbedPress\Includes\Classes\FeaturePreviewModal::OPENED_VERSION_OPTION,
+                    $current_version
+                );
+            }
+        }
+    }
+
+    /**
+     * Callback called right after the plugin has been deactivated.
+     *
+     * @return  void
+     * @since   1.0.0
+     * @static
+     *
+     */
+    public static function onPluginDeactivationCallback()
+    {
+        flush_rewrite_rules();
+        embedpress_cache_cleanup();
+        $timestamp = wp_next_scheduled('embedpress_backup_cleanup_action');
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, 'embedpress_backup_cleanup_action');
+        }
+    }
+
+    /**
+     * Method that retrieves all additional service providers defined in the ~<plugin_root_path>/providers.php file.
+     *
+     * @return  array
+     * @since   1.0.0
+     * @static
+     *
+     */
+    public static function getAdditionalServiceProviders()
+    {
+        $additionalProvidersFilePath = EMBEDPRESS_PATH_BASE . 'providers.php';
+        if (file_exists($additionalProvidersFilePath)) {
+            include $additionalProvidersFilePath;
+
+            if (isset($additionalServiceProviders)) {
+                return apply_filters('embedpress_additional_service_providers', $additionalServiceProviders);
+            }
+        }
+
+        return apply_filters('embedpress_additional_service_providers', []);
+    }
+
+    /**
+     * Method that checks if an embed of a given service provider can be responsive.
+     *
+     * @param  string  $serviceProviderAlias  The service's slug.
+     *
+     * @return  boolean
+     * @since   1.0.0
+     * @static
+     *
+     */
+    public static function canServiceProviderBeResponsive($serviceProviderAlias)
+    {
+        return in_array($serviceProviderAlias, [
+            "dailymotion",
+            "kickstarter",
+            "rutube",
+            "ted",
+            "vimeo",
+            "youtube",
+            "ustream",
+            "google-docs",
+            "animatron",
+            "amcharts",
+            "on-aol-com",
+            "animoto",
+            "videojug",
+            'issuu',
+        ]);
+    }
+
+    /**
+     * Method that retrieves the plugin settings defined by the user.
+     *
+     * @return  object
+     * @since   1.0.0
+     * @static
+     *
+     */
+    public static function getSettings()
+    {
+        // Fetch settings from the database
+        $settings = get_option(EMBEDPRESS_PLG_NAME);
+
+        // If the settings are not an array (it might return false), initialize as an empty array
+        if (!is_array($settings)) {
+            $settings = [];
+        }
+
+        // Default values if settings are missing
+        if (!isset($settings['enablePluginInAdmin'])) {
+            $settings['enablePluginInAdmin'] = true;
+        }
+
+        if (!isset($settings['enablePluginInFront'])) {
+            $settings['enablePluginInFront'] = true;
+        }
+
+        if (!isset($settings['enableGlobalEmbedResize'])) {
+            $settings['enableGlobalEmbedResize'] = false;
+        }
+
+        if (!isset($settings['enableEmbedResizeHeight'])) {
+            $settings['enableEmbedResizeHeight'] = 550; // old 552
+        }
+
+        if (!isset($settings['enableEmbedResizeWidth'])) {
+            $settings['enableEmbedResizeWidth'] = 600; // old 652
+        }
+
+        return (object) $settings;
+    }
+
+    /**
+     * Retrieve all registered plugins.
+     *
+     * @return  array
+     * @since   1.4.0
+     * @static
+     *
+     */
+    public static function getPlugins()
+    {
+        return self::$plugins;
+    }
+
+    /**
+     * Handle links displayed below the plugin name in the WordPress Installed Plugins page.
+     *
+     * @return  array
+     * @since   1.4.0
+     * @static
+     *
+     */
+    public static function handleActionLinks($links, $file)
+    {
+        $settingsLink = '<a href="' . admin_url('admin.php?page=embedpress') . '" aria-label="' . __(
+            'Open settings page',
+            'embedpress'
+        ) . '">' . __('Settings', 'embedpress') . '</a>';
+
+        array_unshift($links, $settingsLink);
+        if (!apply_filters('embedpress/is_allow_rander', false)) {
+            $links[] = '<a href="https://wpdeveloper.com/in/upgrade-embedpress" target="_blank" class="embedpress-go-pro-action" style="color: green">' . __('Go Pro', 'embedpress') . '</a>';
+        }
+        return $links;
+    }
+
+
+    /**
+     * Method that ensures the API's url are whitelisted to WordPress external requests.
+     *
+     * @param  boolean  $isAllowed
+     * @param  string   $host
+     * @param  string   $url
+     *
+     * @return  boolean
+     * @since   1.4.0
+     * @static
+     *
+     */
+    public static function allowApiHost($isAllowed, $host, $url)
+    {
+        if ($host === EMBEDPRESS_LICENSES_API_HOST) {
+            $isAllowed = true;
+        }
+
+        return $isAllowed;
+    }
+
+    public function extended_mime_types($mimes)
+    {
+        $mimes['ppsx'] = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+        return $mimes;
+    }
+}

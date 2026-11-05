@@ -1,0 +1,218 @@
+
+---Downloaded files---
+The import files for: Charifund were successfully downloaded!
+Initial max execution time = 300
+Files info:
+Site URL = https://al-miftah.org
+Data file = /home/u425598304/domains/al-miftah.org/public_html/wp-content/plugins/charifund-core/demo-import/demo-data/content.xml
+Widget file = /home/u425598304/domains/al-miftah.org/public_html/wp-content/plugins/charifund-core/demo-import/demo-data/widgets.wie
+Customizer file = /home/u425598304/domains/al-miftah.org/public_html/wp-content/plugins/charifund-core/demo-import/demo-data/customize.dat
+Redux files:
+not defined!
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+[ERROR] Failed to import "Recoleta-Regular" (Media)
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+
+
+------
+New AJAX call!
+[WARNING] Failed to import "Recoleta": Invalid post type bsf_custom_fonts
+[WARNING] Failed to import "Recoleta": Invalid post type bsf_custom_fonts
+
+
+------
+New AJAX call!
+[WARNING] Failed to import "Recoleta": Invalid post type bsf_custom_fonts
+[WARNING] Failed to import "Recoleta": Invalid post type bsf_custom_fonts
+
+
+------
+New AJAX call!
+[WARNING] Failed to import "Recoleta": Invalid post type bsf_custom_fonts
+[WARNING] Failed to import "Recoleta": Invalid post type bsf_custom_fonts
+
+
+---Importing widgets---
+Sidebar : 
+
+Search - Search Here - Imported
+Charifund: Recent Posts with Thumbnails - Recent Posts - Imported
+Charifund:  Category - Category - Imported
+Charifund: Tags - Tags - Imported
+
+Footer Menu Widget : 
+
+Navigation Menu - Quick Links - Imported
+
+Footer Menu Widget Two : 
+
+Navigation Menu - Our Services - Imported
+
+
+
+---Importing customizer settings---
+Customizer settings import finished!
+
+---ocdi/after_import---
+

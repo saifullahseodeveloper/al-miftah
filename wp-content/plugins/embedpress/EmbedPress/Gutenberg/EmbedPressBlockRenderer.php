@@ -1,0 +1,2292 @@
+<?php
+
+namespace EmbedPress\Gutenberg;
+
+use EmbedPress\Includes\Classes\DynamicFieldResolver;
+use EmbedPress\Includes\Classes\Helper;
+use EmbedPress\Shortcode;
+use Exception;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * EmbedPress Block Renderer
+ *
+ * Handles rendering of EmbedPress blocks for Gutenberg editor
+ * Manages dynamic content, content protection, and various embed configurations
+ *
+ * @package EmbedPress\Gutenberg
+ * @since 1.0.0
+ */
+class EmbedPressBlockRenderer
+{
+    /**
+     * Dynamic providers that require real-time content fetching
+     *
+     * @var array
+     */
+    private static $dynamic_providers = [
+        'photos.app.goo.gl',
+        'photos.google.com',
+        'instagram.com',
+        'opensea.io',
+        'wistia.com',
+        'wistia.net',
+    ];
+
+    /**
+     * Alignment mapping for CSS classes
+     *
+     * @var array
+     */
+    private static $alignment_classes = [
+        'left'   => 'alignleft',
+        'right'  => 'alignright',
+        'wide'   => 'alignwide',
+        'full'   => 'alignfull',
+        'center' => 'aligncenter',
+    ];
+
+    /**
+     * Apply per-post dynamic-source resolution to the block's URL attribute.
+     *
+     * When a block declares `dynamicSource` + `dynamicField`, the saved URL
+     * (and saved iframe `$content`) reflects the editor preview only. Resolve
+     * the URL from the current post's custom field and signal the caller to
+     * discard any cached `$content` so the iframe re-renders.
+     *
+     * @param array  $attributes Block attributes, modified in place.
+     * @param string $url_key    Attribute key holding the URL ('url' or 'href').
+     * @return string Previous URL value when replacement occurred, '' otherwise.
+     *                Callers should string-replace the previous URL with the
+     *                new one in any saved $content so the rendered iframe
+     *                points at the resolved per-post URL.
+     */
+    private static function apply_dynamic_source(array &$attributes, $url_key = 'url')
+    {
+        if (empty($attributes['dynamicSource']) || empty($attributes['dynamicField'])) {
+            return '';
+        }
+
+        // Dynamic Source is a Pro feature — falls back to the editor-preview
+        // URL on free installs and on Pro installs without a valid license.
+        if (!Helper::is_pro_features_enabled()) {
+            return '';
+        }
+
+        $resolved = DynamicFieldResolver::resolve_field(
+            $attributes['dynamicSource'],
+            $attributes['dynamicField']
+        );
+
+        if ($resolved === '') {
+            return '';
+        }
+
+        $previous = isset($attributes[$url_key]) ? (string) $attributes[$url_key] : '';
+        $attributes[$url_key] = $resolved;
+        return $previous;
+    }
+
+    /**
+     * Rewrite the editor-preview URL inside saved block content to the
+     * resolved dynamic URL. The Document block saves a complete iframe HTML
+     * tree (including url-encoded URLs inside view.officeapps.live.com /
+     * docs.google.com/gview wrappers), so a simple str_replace on both raw
+     * and url-encoded forms covers every embedded reference without having
+     * to re-implement the block's save() function in PHP.
+     */
+    private static function rewrite_content_url($content, $previous_url, $new_url)
+    {
+        if ($content === '' || $previous_url === '' || $new_url === '' || $previous_url === $new_url) {
+            return $content;
+        }
+        $replacements = [
+            $previous_url           => $new_url,
+            rawurlencode($previous_url) => rawurlencode($new_url),
+            urlencode($previous_url)    => urlencode($new_url),
+            esc_url($previous_url)      => esc_url($new_url),
+        ];
+        return strtr($content, $replacements);
+    }
+
+    /**
+     * Check if URL belongs to a dynamic provider
+     *
+     * @param string $url The URL to check
+     * @return bool True if dynamic provider, false otherwise
+     */
+    public static function is_dynamic_provider($url)
+    {
+        foreach (self::$dynamic_providers as $provider) {
+            if (strpos($url, $provider) !== false) {
+                return true;
+            }
+        }
+
+        // YouTube channel/playlist URLs (gallery, queue) need re-render at view
+        // time so paging tokens, item count, and metadata stay current — and
+        // because their HTML contains stray comments / quotes that don't
+        // round-trip through the block parser cleanly when stored in attrs.
+        if (Helper::is_youtube_channel_or_playlist($url)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Render dynamic content using EmbedPress shortcode parsing
+     *
+     * @param array $attributes Block attributes
+     * @return string|null Rendered content or null on failure
+     */
+    public static function render_dynamic_content($attributes)
+    {
+        self::apply_dynamic_source($attributes, 'url');
+        $url = $attributes['url'] ?? '';
+
+        if (!class_exists('\\EmbedPress\\Shortcode')) {
+            return null;
+        }
+
+        // Map Meetup-specific Gutenberg attributes to shortcode attributes
+        if (!empty($url) && strpos($url, 'meetup.com') !== false) {
+            if (isset($attributes['meetupOrderBy'])) {
+                $attributes['orderby'] = $attributes['meetupOrderBy'];
+            }
+            if (isset($attributes['meetupOrder'])) {
+                $attributes['order'] = $attributes['meetupOrder'];
+            }
+            if (isset($attributes['meetupPerPage'])) {
+                $attributes['per_page'] = $attributes['meetupPerPage'];
+            }
+            if (isset($attributes['meetupEnablePagination'])) {
+                $attributes['enable_pagination'] = $attributes['meetupEnablePagination'];
+            }
+            if (isset($attributes['meetupTimezone'])) {
+                $attributes['timezone'] = $attributes['meetupTimezone'];
+            }
+            if (isset($attributes['meetupDateFormat'])) {
+                $attributes['date_format'] = $attributes['meetupDateFormat'];
+            }
+            if (isset($attributes['meetupTimeFormat'])) {
+                $attributes['time_format'] = $attributes['meetupTimeFormat'];
+            }
+        }
+
+        try {
+            $embed_result = Shortcode::parseContent($url, false, $attributes);
+
+            if (is_object($embed_result) && isset($embed_result->embed) && !empty($embed_result->embed)) {
+                return $embed_result->embed;
+            }
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('EmbedPress: Shortcode parsing failed: ' . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Main render method for EmbedPress blocks
+     *
+     * @param array  $attributes Block attributes
+     * @param string $content    Block content
+     * @param object $block      Block object (unused but kept for compatibility)
+     * @return string Rendered HTML content
+     */
+    public static function render($attributes, $content = '', $block = null)
+    {
+        // Resolve dynamic-source URL (per-post custom field) before any
+        // saved-content shortcut. Rewrite the editor-preview URL inside the
+        // saved $content / embedHTML so the iframe points at the resolved
+        // per-post URL — preserves the block's full save() markup (controls,
+        // share buttons, branding, etc.) instead of regenerating from scratch.
+        $previous_url = self::apply_dynamic_source($attributes, 'url');
+        if ($previous_url !== '') {
+            $content = self::rewrite_content_url($content, $previous_url, $attributes['url']);
+            if (!empty($attributes['embedHTML'])) {
+                $attributes['embedHTML'] = self::rewrite_content_url($attributes['embedHTML'], $previous_url, $attributes['url']);
+            }
+        }
+
+        // Extract basic attributes
+        $url = $attributes['url'] ?? '';
+        $client_id = !empty($attributes['clientId']) ? md5($attributes['clientId']) : '';
+
+        // Pro: Country Restriction. Filter returns rendered HTML to
+        // short-circuit, or false to render normally. No-op without Pro.
+        $restricted = apply_filters('embedpress/gutenberg/country_restriction_html', false, $attributes);
+        if ($restricted !== false) {
+            return $restricted;
+        }
+
+        // Handle content protection
+        $protection_data = self::extract_protection_data($attributes, $client_id);
+        $should_display_content = self::should_display_content($protection_data);
+        $isAdManager = !empty($attributes['adManager']) ? true : false;
+
+
+        // Early return for non-dynamic providers with displayable content.
+        //
+        // When Custom Player (Pro #81243) is enabled we MUST fall through to
+        // render_embed_html() so build_player_options() can emit the Pro
+        // feature keys (chapters, email_capture, heatmap, etc.) into
+        // data-options. The block's save() function only emits the 13 basic
+        // player keys, so without this gate Pro features never reach
+        // initplyr.js on the front-end.
+        $has_custom_player = !empty($attributes['customPlayer']);
+        if ((!empty($content) && !self::is_dynamic_provider($url)) && !$has_custom_player && $should_display_content && !$isAdManager) {
+            return $content;
+        }
+
+        // Process embed HTML if available
+        if (!empty($attributes['embedHTML'])) {
+            // For YT channel/playlist URLs, the stored embedHTML may predate
+            // the current layout (queue) — always re-render via the provider
+            // so the editor and frontend show the same thing.
+            if (Helper::is_youtube_channel_or_playlist($url)) {
+                $fresh = self::render_youtube_playlist_via_provider($url, $attributes);
+                if (!empty($fresh)) {
+                    return self::render_embed_html($attributes, $fresh, $protection_data, $should_display_content);
+                }
+            }
+            return self::render_embed_html($attributes, $attributes['embedHTML'], $protection_data, $should_display_content);
+        }
+
+        // No embedHTML stored — for dynamic providers (incl. YT playlist),
+        // render via the provider so the block still works without a pre-baked HTML.
+        if (!empty($url) && self::is_dynamic_provider($url)) {
+            $fresh = self::render_youtube_playlist_via_provider($url, $attributes);
+            if (!empty($fresh)) {
+                return self::render_embed_html($attributes, $fresh, $protection_data, $should_display_content);
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Render YouTube channel/playlist URL via the Shortcode pipeline (which
+     * dispatches to EmbedPress\Providers\Youtube::getStaticResponse for queue).
+     * Returns iframe/queue HTML or '' on failure.
+     */
+    private static function render_youtube_playlist_via_provider($url, $attributes)
+    {
+        if (!Helper::is_youtube_channel_or_playlist($url)) {
+            return '';
+        }
+        $custom_attrs = [];
+        // ytChannelLayout applies to CHANNEL URLs only. Empty = use provider
+        // default (gallery). Explicit user pick from inspector overrides.
+        if (!empty($attributes['ytChannelLayout'])) {
+            $custom_attrs['ytChannelLayout'] = $attributes['ytChannelLayout'];
+        }
+        // ytPlaylistLayout applies to PLAYLIST URLs only. Empty = queue default.
+        if (!empty($attributes['ytPlaylistLayout'])) {
+            $custom_attrs['ytPlaylistLayout'] = $attributes['ytPlaylistLayout'];
+        }
+        if (!empty($attributes['pagesize'])) {
+            $custom_attrs['pagesize'] = $attributes['pagesize'];
+        }
+        if (!empty($attributes['ytPlaylistMode'])) {
+            $custom_attrs['ytPlaylistMode'] = $attributes['ytPlaylistMode'];
+        }
+        $r = Shortcode::parseContent($url, true, $custom_attrs);
+        return is_object($r) ? $r->embed : (is_string($r) ? $r : '');
+    }
+
+
+    /**
+     * Legacy PDF render method - organized following current structure
+     *
+     * @param array $attributes Block attributes
+     * @return string Rendered HTML content
+     */
+    public static function embedpress_pdf_legacy_render_block($attributes)
+    {
+        // Extract basic attributes for PDF block
+        $href = $attributes['href'] ?? '';
+        $id = $attributes['id'] ?? 'embedpress-pdf-' . rand(100, 10000);
+        $client_id = md5($id);
+
+        // If no href is provided, return empty
+        if (empty($href)) {
+            return '';
+        }
+
+        // Handle content protection using existing methods
+        $protection_data = self::extract_protection_data($attributes, $client_id);
+        $should_display_content = self::should_display_content($protection_data);
+
+        // Build styling configuration using existing method
+        $styling = self::build_styling_config($attributes, $protection_data);
+
+        // Generate legacy PDF HTML
+        return self::render_legacy_pdf_html($attributes, $protection_data, $should_display_content, $styling);
+    }
+
+    /**
+     * Render legacy PDF HTML structure
+     *
+     * @param array $attributes Block attributes
+     * @param array $protection_data Protection data
+     * @param bool $should_display_content Whether content should be displayed
+     * @param array $styling Styling configuration
+     * @return string Rendered HTML
+     */
+    private static function render_legacy_pdf_html($attributes, $protection_data, $should_display_content, $styling)
+    {
+        $href = $attributes['href'];
+        $id = $attributes['id'] ?? 'embedpress-pdf-' . rand(100, 10000);
+        $client_id = md5($id);
+
+        // Lightbox mode: render thumbnail instead of inline viewer
+        $displayMode = $attributes['displayMode'] ?? 'inline';
+        if ($displayMode === 'lightbox' && $should_display_content) {
+            return self::render_pdf_lightbox_thumbnail($attributes, $client_id);
+        }
+        if (in_array($displayMode, ['button', 'link', 'text']) && $should_display_content) {
+            return self::render_pdf_trigger($attributes, $client_id, $displayMode);
+        }
+
+        // Extract legacy-specific configurations
+        $legacy_config = self::extract_legacy_pdf_config($attributes);
+
+        // Generate embed code
+        $embed_code = self::generate_legacy_embed_code($attributes, $legacy_config);
+
+        // Build wrapper classes
+        $wrapper_classes = self::build_legacy_wrapper_classes($attributes, $styling, $legacy_config);
+
+        ob_start();
+?>
+        <div id="ep-gutenberg-content-<?php echo esc_attr($client_id) ?>" class="ep-gutenberg-content <?php echo esc_attr($wrapper_classes); ?>" data-embed-type="PDF" data-embed-url="<?php echo esc_url($href); ?>">
+            <div class="embedpress-inner-iframe <?php echo esc_attr($legacy_config['unit_class']); ?> ep-doc-<?php echo esc_attr($client_id); ?>" style="<?php echo esc_attr($legacy_config['style_attr']); ?>" id="<?php echo esc_attr($id); ?>">
+                <div <?php echo $styling['ads_attrs']; // complete escaped attribute pair(s); esc_attr would double-encode the quotes ?>>
+                    <?php
+                    do_action('embedpress_pdf_gutenberg_after_embed', $client_id, 'pdf', $attributes, $href);
+
+                    if ($should_display_content) {
+                        self::render_legacy_displayable_content($embed_code, $attributes, $styling);
+                    } else {
+                        self::render_legacy_protected_content($embed_code, $attributes, $protection_data, $styling);
+                    }
+
+                    // Render ad template if enabled
+                    if (!empty($attributes['adManager'])) {
+                        $embed_code = apply_filters('embedpress/generate_ad_template', $embed_code, $client_id, $attributes, 'gutenberg');
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+    <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Extract legacy PDF configuration
+     *
+     * @param array $attributes Block attributes
+     * @return array Legacy configuration
+     */
+    private static function extract_legacy_pdf_config($attributes)
+    {
+        $unitoption = $attributes['unitoption'] ?? 'px';
+        $width = !empty($attributes['width']) ? $attributes['width'] . $unitoption : (Helper::get_options_value('enableEmbedResizeWidth') ?: 600) . 'px';
+        $height = !empty($attributes['height']) ? $attributes['height'] . 'px' : (Helper::get_options_value('enableEmbedResizeHeight') ?: 600) . 'px';
+
+        $width_class = ($unitoption == '%') ? 'ep-percentage-width' : 'ep-fixed-width';
+        $unit_class = ($unitoption === '%') ? 'emebedpress-unit-percent' : '';
+
+        $style_attr = ($unitoption === '%' && !empty($attributes['width']))
+            ? 'max-width:' . $attributes['width'] . '%'
+            : 'max-width:100%';
+
+        $dimension = "width:$width;height:$height";
+
+        return [
+            'unitoption' => $unitoption,
+            'width' => $width,
+            'height' => $height,
+            'width_class' => $width_class,
+            'unit_class' => $unit_class,
+            'style_attr' => $style_attr,
+            'dimension' => $dimension,
+        ];
+    }
+
+    /**
+     * Generate legacy embed code
+     *
+     * @param array $attributes Block attributes
+     * @param array $legacy_config Legacy configuration
+     * @return string Embed code
+     */
+    private static function generate_legacy_embed_code($attributes, $legacy_config)
+    {
+        $href = $attributes['href'];
+        $id = $attributes['id'] ?? 'embedpress-pdf-' . rand(100, 10000);
+        $renderer = Helper::get_pdf_renderer();
+
+        $src = $renderer . ((strpos($renderer, '?') === false) ? '?' : '&') . 'file=' . urlencode($href) . self::generate_pdf_params($attributes);
+        
+        $iframe_title = self::get_iframe_title_from_url($href);
+
+        $embed_code = '<iframe title="' . esc_attr($iframe_title) . '" class="embedpress-embed-document-pdf ' . esc_attr($id) . '" style="' . esc_attr($legacy_config['dimension']) . '; max-width:100%; display: inline-block" src="' . esc_url($src) . '" frameborder="0" oncontextmenu="return false;"></iframe> ';
+
+        // Handle flip-book viewer style
+        if (isset($attributes['viewerStyle']) && $attributes['viewerStyle'] === 'flip-book') {
+            $src = urlencode($href) . self::generate_pdf_params($attributes);
+            $renderer = Helper::get_flipbook_renderer();
+            $src_url = $renderer . ((strpos($renderer, '?') === false) ? '?' : '&') . 'file=' . $src;
+            $embed_code = '<iframe title="' . esc_attr(Helper::get_file_title($href)) . '" class="embedpress-embed-document-pdf ' . esc_attr($id) . '" style="' . esc_attr($legacy_config['dimension']) . '; max-width:100%; display: inline-block" src="' . esc_url($src_url) . '" frameborder="0" oncontextmenu="return false;"></iframe> ';
+        }
+
+        // Add powered by if enabled
+        $gen_settings = get_option(EMBEDPRESS_PLG_NAME);
+        $powered_by = isset($gen_settings['embedpress_document_powered_by']) && 'yes' === $gen_settings['embedpress_document_powered_by'];
+        if (isset($attributes['powered_by'])) {
+            $powered_by = $attributes['powered_by'];
+        }
+
+        if ($powered_by) {
+            $embed_code .= sprintf('<p class="embedpress-el-powered">%s</p>', __('Powered By EmbedPress', 'embedpress'));
+        }
+
+        return $embed_code;
+    }
+
+    /**
+     * Build legacy wrapper classes
+     *
+     * @param array $attributes Block attributes
+     * @param array $styling Styling configuration
+     * @param array $legacy_config Legacy configuration
+     * @return string CSS classes
+     */
+    private static function build_legacy_wrapper_classes($attributes, $styling, $legacy_config)
+    {
+        return trim(sprintf(
+            '%s %s %s %s %s',
+            $styling['alignment'],
+            $legacy_config['width_class'],
+            $styling['content_share_class'],
+            $styling['share_position_class'],
+            $styling['content_protection_class']
+        ));
+    }
+
+    /**
+     * Render legacy displayable content
+     *
+     * @param string $embed_code Embed code
+     * @param array $attributes Block attributes
+     * @param array $styling Styling configuration
+     */
+    private static function render_legacy_displayable_content($embed_code, $attributes, $styling)
+    {
+        $share_position = $attributes['sharePosition'] ?? 'right';
+        $content_id = $attributes['id'];
+
+        echo '<div class="ep-embed-content-wraper">';
+        $embed = '<div class="position-' . esc_attr($share_position) . '-wraper gutenberg-pdf-wraper">';
+        $embed .= $embed_code;
+        $embed .= '</div>';
+
+        if (!empty($attributes['contentShare'])) {
+            $embed .= Helper::embed_content_share($content_id, $attributes);
+        }
+        echo $embed;
+        echo '</div>';
+    }
+
+    /**
+     * Render legacy protected content
+     *
+     * @param string $embed_code Embed code
+     * @param array $attributes Block attributes
+     * @param array $protection_data Protection data
+     * @param array $styling Styling configuration
+     */
+    private static function render_legacy_protected_content($embed_code, $attributes, $protection_data, $styling)
+    {
+        $share_position = $attributes['sharePosition'] ?? 'right';
+        $client_id = $protection_data['client_id'];
+
+        // Initialize $embed variable
+        $embed = $embed_code;
+
+        if (!empty($attributes['contentShare'])) {
+            $content_id = $attributes['clientId'];
+            $embed = '<div class="position-' . esc_attr($share_position) . '-wraper gutenberg-pdf-wraper">';
+            $embed .= $embed_code;
+            $embed .= '</div>';
+            $embed .= Helper::embed_content_share($content_id, $attributes);
+        }
+
+        echo '<div class="ep-embed-content-wraper">';
+        if ($attributes['protectionType'] == 'password') {
+            echo '<div id="ep-gutenberg-content-' . esc_attr($client_id) . '" class="ep-gutenberg-content">';
+            do_action('embedpress/display_password_form', $client_id, $embed, $styling['pass_hash_key'], $attributes);
+            echo '</div>';
+        } else {
+            do_action('embedpress/content_protection_content', $client_id, $attributes['protectionMessage'], $attributes['userRole']);
+        }
+        echo '</div>';
+    }
+
+    /**
+     * Replace a saved lightbox thumbnail <canvas> with a server-resolved poster.
+     *
+     * The PDF/Document blocks save their markup statically, so posts created
+     * before (or without) a poster carry a
+     * `<canvas class="ep-pdf-thumbnail-canvas" data-pdf-url="…">`. The frontend
+     * then rasterises page 1 with PDF.js in the visitor's browser on every page
+     * load — for an 18MB PDF that is ~20 requests and the whole file downloaded,
+     * every view, uncached. See FB #84167.
+     *
+     * Rewriting the saved HTML at render time fixes existing posts without
+     * touching the block's save() output, so no `deprecated[]` entry is needed
+     * and no post shows the "unexpected or invalid content" recovery prompt.
+     *
+     * No-ops when there is no canvas, when the PDF has no poster (external URL,
+     * or a host where WordPress generated no preview), or when a custom
+     * thumbnail is already in use — in every one of those cases $content is
+     * returned byte-identical.
+     *
+     * @param string $content Saved block HTML.
+     * @param string $href    PDF URL for this block.
+     * @return string Content with the canvas swapped for an <img>, or unchanged.
+     */
+    private static function swap_thumbnail_canvas_for_poster($content, $href)
+    {
+        if (empty($href) || false === strpos($content, 'ep-pdf-thumbnail-canvas')) {
+            return $content;
+        }
+
+        $poster = Helper::get_pdf_poster_url($href);
+        if (empty($poster)) {
+            return $content;
+        }
+
+        $title = Helper::get_file_title($href);
+
+        // Swap the whole <canvas …></canvas> element. The canvas carries no
+        // child nodes, so a non-greedy match to the first closing tag is safe.
+        $replaced = preg_replace(
+            '~<canvas[^>]*class="[^"]*ep-pdf-thumbnail-canvas[^"]*"[^>]*>.*?</canvas>~is',
+            sprintf(
+                '<img class="ep-pdf-thumbnail-custom" src="%s" alt="%s" loading="lazy" style="width:100%%;height:100%%;object-fit:cover;" />',
+                esc_url($poster),
+                esc_attr($title)
+            ),
+            $content,
+            1
+        );
+
+        // preg_replace returns null on failure (e.g. backtrack limit on very
+        // large content) — never hand null back to the block renderer.
+        return (null === $replaced) ? $content : $replaced;
+    }
+
+    public static function render_embedpress_pdf($attributes, $content = '', $block = null)
+    {
+        // Per-post dynamic source — rewrite the editor-preview URL inside the
+        // saved iframe HTML to the resolved href. PDF block saves as
+        // self-closing in most cases (content empty → falls to the legacy
+        // renderer which builds from $href), but when content IS present
+        // (e.g. block was opened/re-saved) we rewrite in place so we keep
+        // every other saved control (toolbar, branding, page).
+        $previous_url = self::apply_dynamic_source($attributes, 'href');
+        if ($previous_url !== '') {
+            $content = self::rewrite_content_url($content, $previous_url, $attributes['href']);
+        }
+
+        // Extract basic attributes for PDF block
+        $href = $attributes['href'] ?? '';
+        $client_id = !empty($attributes['id']) ? md5($attributes['id']) : '';
+
+        // Handle content protection
+        $protection_data = self::extract_protection_data($attributes, $client_id);
+        $should_display_content = self::should_display_content($protection_data);
+        $isAdManager = !empty($attributes['adManager']) ? true : false;
+
+
+        // For PDF blocks, if we have saved content and should display it, return the content
+        // (with any saved thumbnail canvas swapped for the cached poster).
+        if (!empty($content) && $should_display_content && !$isAdManager) {
+            return self::swap_thumbnail_canvas_for_poster($content, $href);
+        }
+
+        // If no href is provided, return empty
+        if (empty($href)) {
+            return '';
+        }
+
+
+        if (empty($content)) {
+            return self::embedpress_pdf_legacy_render_block($attributes);
+        }
+
+
+        // Render PDF-specific HTML
+        return self::render_embedpress_pdf_html($attributes, $content, $protection_data, $should_display_content);
+    }
+
+    public static function render_document($attributes, $content = '', $block = null)
+    {
+        // Per-post dynamic source — rewrite the editor-preview URL inside the
+        // saved iframe HTML. Document block saves a complete viewer tree
+        // (Office Online / Google Viewer wrapper with url-encoded src), so
+        // string-replacing both raw + url-encoded forms is enough to redirect
+        // the iframe at the resolved per-post URL without rebuilding the
+        // entire markup in PHP.
+        $previous_url = self::apply_dynamic_source($attributes, 'href');
+        if ($previous_url !== '') {
+            $content = self::rewrite_content_url($content, $previous_url, $attributes['href']);
+        }
+
+        // Extract basic attributes for PDF block
+        $href = $attributes['href'] ?? '';
+        $client_id = !empty($attributes['id']) ? md5($attributes['id']) : '';
+
+        // Handle content protection
+        $protection_data = self::extract_protection_data($attributes, $client_id);
+        $should_display_content = self::should_display_content($protection_data);
+        $isAdManager = !empty($attributes['adManager']) ? true : false;
+
+        // For PDF blocks, if we have saved content and should display it, return the content
+        // (with any saved thumbnail canvas swapped for the cached poster).
+        if (!empty($content) && $should_display_content && !$isAdManager) {
+            return self::swap_thumbnail_canvas_for_poster($content, $href);
+        }
+
+        // If no href is provided, return empty
+        if (empty($href)) {
+            return '';
+        }
+
+
+        // Render PDF-specific HTML
+        return self::render_embedpress_document_html($attributes, $content, $protection_data, $should_display_content);
+    }
+
+    /**
+     * Extract content protection related data from attributes
+     *
+     * @param array  $attributes Block attributes
+     * @param string $client_id  Client ID for the block
+     * @return array Protection data array
+     */
+    private static function extract_protection_data($attributes, $client_id)
+    {
+        $content_password = $attributes['contentPassword'] ?? '';
+        $hash_pass = hash('sha256', wp_salt(32) . md5($content_password));
+        $password_correct = $_COOKIE['password_correct_' . $client_id] ?? '';
+        return [
+            'content_password'    => $content_password,
+            'hash_pass'          => $hash_pass,
+            'password_correct'   => $password_correct,
+            'protection_type'    => $attributes['protectionType'] ?? '',
+            'lock_content'       => $attributes['lockContent'] ?? '',
+            'user_role'          => $attributes['userRole'] ?? '',
+            'content_share'      => $attributes['contentShare'] ?? '',
+            'protection_message' => $attributes['protectionMessage'] ?? '',
+            'content_id'         => $attributes['clientId'] ?? '',
+            'client_id'          => $client_id,
+        ];
+    }
+
+    /**
+     * Determine if content should be displayed based on protection settings
+     *
+     * @param array $protection_data Protection data array
+     * @return bool True if content should be displayed
+     */
+    private static function should_display_content($protection_data)
+    {
+        return (
+            !apply_filters('embedpress/is_allow_rander', false) ||
+            empty($protection_data['lock_content']) ||
+            ($protection_data['protection_type'] === 'password' && empty($protection_data['content_password'])) ||
+            ($protection_data['protection_type'] === 'password' &&
+                !empty(Helper::is_password_correct($protection_data['client_id'])) &&
+                ($protection_data['hash_pass'] === $protection_data['password_correct'])) ||
+            ($protection_data['protection_type'] === 'user-role' &&
+                Helper::has_content_allowed_roles($protection_data['user_role']))
+        );
+    }
+
+    /**
+     * Render the embed HTML with all configurations
+     *
+     * @param array $attributes         Block attributes
+     * @param string $content          Block content
+     * @param array $protection_data   Protection data
+     * @param bool $should_display_content Whether content should be displayed
+     * @return string Rendered HTML
+     */
+    private static function render_embed_html($attributes, $content, $protection_data, $should_display_content)
+    {
+        // Extract basic configuration
+        $config = self::extract_basic_config($attributes);
+
+        // Build carousel configuration
+        $carousel_config = self::build_carousel_config($attributes, $protection_data['client_id']);
+
+        // Build player configuration
+        $player_config = self::build_player_config($attributes, $protection_data['client_id']);
+
+        // Get dynamic content
+        $embed = self::get_embed_content($attributes, $content);
+
+        // Inject iframeTitle derived from URL
+        $url = $attributes['url'] ?? '';
+        $title = self::get_iframe_title_from_url($url);
+        
+        if (!empty($title)) {
+            if (is_array($embed) && isset($embed['html'])) {
+                $embed['html'] = preg_replace('/<iframe(.*?)>/i', '<iframe$1 title="' . esc_attr($title) . '">', $embed['html']);
+            } elseif (is_string($embed)) {
+                $embed = preg_replace('/<iframe(.*?)>/i', '<iframe$1 title="' . esc_attr($title) . '">', $embed);
+            }
+        }
+
+        // Build CSS classes and styling
+        $styling = self::build_styling_config($attributes, $protection_data);
+
+        // Generate final HTML
+        return self::generate_final_html($attributes, $embed, $config, $carousel_config, $player_config, $styling, $protection_data, $should_display_content);
+    }
+
+    private static function render_embedpress_document_html($attributes, $content, $protection_data, $should_display_content)
+    {
+
+        $href = $attributes['href'] ?? '';
+        if (empty($href)) return '';
+
+        $id = $attributes['id'] ?? 'embedpress-document-' . rand(100, 10000);
+        $client_id = $attributes['clientId'] ?? md5($id);
+        $contentShare = $attributes['contentShare'] ?? false;
+        $styling = self::build_styling_config($attributes, $protection_data);
+
+
+        ob_start();
+    ?>
+        <div class="wp-block-embedpress-document" data-embed-type="Document">
+            <?php self::render_embed_content($content, $contentShare, $id, $attributes, $should_display_content, $protection_data, $styling); ?>
+            <?php self::render_ad_template($attributes, $content, $client_id); ?>
+        </div>
+    <?php
+
+        return ob_get_clean();
+    }
+
+
+
+    private static function render_embedpress_pdf_html($attributes, $content, $protection_data, $should_display_content)
+    {
+        // Extract PDF-specific attributes
+        $href = $attributes['href'] ?? '';
+        if (empty($href)) {
+            return '';
+        }
+
+        $id = $attributes['id'] ?? 'embedpress-pdf-' . rand(100, 10000);
+        $client_id = md5($id);
+        $contentShare = $attributes['contentShare'] ?? false;
+
+        $styling = self::build_styling_config($attributes, $protection_data);
+
+        // Build the complete HTML structure
+        ob_start();
+    ?>
+        <div class="wp-block-embedpress-pdf" data-embed-type="PDF">
+            <?php self::render_embed_content($content, $contentShare, $id, $attributes, $should_display_content, $protection_data, $styling); ?>
+            <?php self::render_ad_template($attributes, $content, $client_id); ?>
+        </div>
+    <?php
+
+        return ob_get_clean();
+    }
+
+    /**
+     * Generate PDF parameters for viewer configuration
+     * Based on the self::generate_pdf_params function from the old implementation
+     */
+    /**
+     * Render PDF as a clickable thumbnail that opens in a lightbox
+     */
+    private static function render_pdf_lightbox_thumbnail($attributes, $client_id)
+    {
+        $href = $attributes['href'];
+        $viewerStyle = $attributes['viewerStyle'] ?? 'modern';
+        $unitoption = ($attributes['unitoption'] ?? 'px') === '%' ? '%' : 'px';
+        $width = !empty($attributes['width']) ? $attributes['width'] . $unitoption : '600px';
+        $powered_by = !empty($attributes['powered_by']);
+        $lightboxThumbnail = $attributes['lightboxThumbnail'] ?? '';
+
+        // No custom thumbnail picked — fall back to the poster WordPress
+        // already generated for this PDF at upload time, so the browser does
+        // not have to download the whole document to draw a preview (FB #84167).
+        if (empty($lightboxThumbnail)) {
+            $lightboxThumbnail = Helper::get_pdf_poster_url($href);
+        }
+        $lightboxAlign = $attributes['lightboxAlign'] ?? 'left';
+
+        $alignStyle = '';
+        if ($lightboxAlign === 'center') {
+            $alignStyle = 'text-align: center;';
+        } elseif ($lightboxAlign === 'right') {
+            $alignStyle = 'text-align: right;';
+        }
+
+        // Generate base64 viewer params
+        $urlParamData = self::build_pdf_param_array($attributes);
+        $queryString = http_build_query($urlParamData);
+        if (function_exists('mb_convert_encoding')) {
+            $queryString = mb_convert_encoding($queryString, 'UTF-8');
+        }
+        $viewerParams = base64_encode($queryString);
+
+        $pdfTitle = Helper::get_file_title($href);
+
+        ob_start();
+        ?>
+        <div id="ep-gutenberg-content-<?php echo esc_attr($client_id); ?>" class="ep-gutenberg-content">
+            <div class="embedpress-document-embed ep-doc-<?php echo esc_attr($client_id); ?>"
+                 style="max-width: <?php echo esc_attr($width); ?>; <?php echo esc_attr($alignStyle); ?>"
+                 data-embed-type="PDF">
+                <div class="ep-pdf-thumbnail-card">
+                    <div class="ep-pdf-thumbnail-wrap"
+                         data-pdf-url="<?php echo esc_url($href); ?>"
+                         data-viewer-style="<?php echo esc_attr($viewerStyle); ?>"
+                         data-viewer-params="<?php echo esc_attr($viewerParams); ?>">
+                        <div class="ep-pdf-thumbnail-inner">
+                            <?php if (!empty($lightboxThumbnail)): ?>
+                                <img class="ep-pdf-thumbnail-custom" src="<?php echo esc_url($lightboxThumbnail); ?>" alt="<?php echo esc_attr($pdfTitle); ?>" />
+                            <?php else: ?>
+                                <canvas class="ep-pdf-thumbnail-canvas"
+                                        data-pdf-url="<?php echo esc_url($href); ?>"
+                                        data-loading="true"></canvas>
+                            <?php endif; ?>
+                            <div class="ep-pdf-thumbnail-overlay">
+                                <div class="ep-pdf-thumbnail-icon-circle">
+                                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <?php if ($powered_by): ?>
+                    <p class="embedpress-el-powered"><?php esc_html_e('Powered By EmbedPress', 'embedpress'); ?></p>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Render PDF as a button, link, or text trigger that opens in a lightbox
+     */
+    private static function render_pdf_trigger($attributes, $client_id, $mode)
+    {
+        $href = $attributes['href'];
+        $viewerStyle = $attributes['viewerStyle'] ?? 'modern';
+        $triggerText = !empty($attributes['triggerText']) ? $attributes['triggerText'] : 'View PDF';
+        $lightboxAlign = $attributes['lightboxAlign'] ?? 'left';
+
+        $alignStyle = '';
+        if ($lightboxAlign === 'center') {
+            $alignStyle = 'text-align: center;';
+        } elseif ($lightboxAlign === 'right') {
+            $alignStyle = 'text-align: right;';
+        }
+
+        // Build inline styles for trigger element
+        $triggerStyles = [];
+        if (!empty($attributes['triggerColor'])) {
+            $triggerStyles[] = 'color:' . esc_attr($attributes['triggerColor']);
+        }
+        if (!empty($attributes['triggerFontSize'])) {
+            $triggerStyles[] = 'font-size:' . intval($attributes['triggerFontSize']) . 'px';
+        }
+        if ($mode === 'button') {
+            if (!empty($attributes['triggerBgColor'])) {
+                $triggerStyles[] = 'background-color:' . esc_attr($attributes['triggerBgColor']);
+            }
+            if (!empty($attributes['triggerBorderRadius'])) {
+                $triggerStyles[] = 'border-radius:' . intval($attributes['triggerBorderRadius']) . 'px';
+            }
+        }
+        $triggerStyleAttr = !empty($triggerStyles) ? implode(';', $triggerStyles) : '';
+
+        // Generate base64 viewer params
+        $urlParamData = self::build_pdf_param_array($attributes);
+        $queryString = http_build_query($urlParamData);
+        if (function_exists('mb_convert_encoding')) {
+            $queryString = mb_convert_encoding($queryString, 'UTF-8');
+        }
+        $viewerParams = base64_encode($queryString);
+
+        ob_start();
+        ?>
+        <div id="ep-gutenberg-content-<?php echo esc_attr($client_id); ?>" class="ep-gutenberg-content">
+            <div class="embedpress-document-embed ep-doc-<?php echo esc_attr($client_id); ?>"
+                 style="<?php echo esc_attr($alignStyle); ?>"
+                 data-embed-type="PDF">
+                <div class="ep-pdf-thumbnail-wrap"
+                     data-pdf-url="<?php echo esc_url($href); ?>"
+                     data-viewer-style="<?php echo esc_attr($viewerStyle); ?>"
+                     data-viewer-params="<?php echo esc_attr($viewerParams); ?>">
+                    <span class="ep-pdf-trigger ep-pdf-trigger--<?php echo esc_attr($mode); ?>"<?php if ($triggerStyleAttr) echo ' style="' . esc_attr($triggerStyleAttr) . '"'; ?>><?php echo esc_html($triggerText); ?></span>
+                </div>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Build the PDF param data array (shared by generate_pdf_params and render_pdf_lightbox_thumbnail)
+     */
+    private static function build_pdf_param_array($attributes)
+    {
+        $urlParamData = array(
+            'themeMode' => !empty($attributes['themeMode']) ? $attributes['themeMode'] : 'default',
+            'toolbar' => !empty($attributes['toolbar']) ? 'true' : 'false',
+            'position' => $attributes['position'] ?? 'top',
+            'presentation' => !empty($attributes['presentation']) ? 'true' : 'false',
+            'lazyLoad' => !empty($attributes['lazyLoad']) ? 'true' : 'false',
+            'download' => !empty($attributes['download']) ? 'true' : 'false',
+            'copy_text' => !empty($attributes['copy_text']) ? 'true' : 'false',
+            'add_text' => !empty($attributes['add_text']) ? 'true' : 'false',
+            'draw' => !empty($attributes['draw']) ? 'true' : 'false',
+            'doc_rotation' => !empty($attributes['doc_rotation']) ? 'true' : 'false',
+            'add_image' => !empty($attributes['add_image']) ? 'true' : 'false',
+            'doc_details' => !empty($attributes['doc_details']) ? 'true' : 'false',
+            'zoom_in' => !empty($attributes['zoomIn']) ? 'true' : 'false',
+            'zoom_out' => !empty($attributes['zoomOut']) ? 'true' : 'false',
+            'fit_view' => !empty($attributes['fitView']) ? 'true' : 'false',
+            'bookmark' => !empty($attributes['bookmark']) ? 'true' : 'false',
+            'flipbook_toolbar_position' => !empty($attributes['flipbook_toolbar_position']) ? $attributes['flipbook_toolbar_position'] : 'bottom',
+            'flipbook_rtl' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['flipbookPageFlipRTL']) ? 'true' : 'false',
+            'flipbook_highlight_links' => !empty($attributes['flipbookHighlightLinks']) ? 'true' : 'false',
+            'flipbook_highlight_color' => isset($attributes['flipbookHighlightColor']) ? esc_attr($attributes['flipbookHighlightColor']) : '',
+            'selection_tool' => isset($attributes['selection_tool']) ? esc_attr($attributes['selection_tool']) : '0',
+            'scrolling' => isset($attributes['scrolling']) ? esc_attr($attributes['scrolling']) : '-1',
+            'spreads' => isset($attributes['spreads']) ? esc_attr($attributes['spreads']) : '-1',
+            'watermark_text' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkText']) ? esc_attr($attributes['watermarkText']) : '',
+            'watermark_font_size' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkFontSize']) ? esc_attr($attributes['watermarkFontSize']) : '48',
+            'watermark_color' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkColor']) ? esc_attr($attributes['watermarkColor']) : '#000000',
+            'watermark_opacity' => defined('EMBEDPRESS_SL_ITEM_SLUG') && isset($attributes['watermarkOpacity']) ? esc_attr($attributes['watermarkOpacity']) : '15',
+            'watermark_style' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkStyle']) ? esc_attr($attributes['watermarkStyle']) : 'center',
+        );
+
+        if ($urlParamData['themeMode'] === 'custom') {
+            $urlParamData['customColor'] = !empty($attributes['customColor']) ? $attributes['customColor'] : '#403A81';
+        }
+
+        return $urlParamData;
+    }
+
+    private static function generate_pdf_params($attributes)
+    {
+        $urlParamData = array(
+            'themeMode' => !empty($attributes['themeMode']) ? $attributes['themeMode'] : 'default',
+            'toolbar' => !empty($attributes['toolbar']) ? 'true' : 'false',
+            'position' => $attributes['position'] ?? 'top',
+            'presentation' => !empty($attributes['presentation']) ? 'true' : 'false',
+            'lazyLoad' => !empty($attributes['lazyLoad']) ? 'true' : 'false',
+            'download' => !empty($attributes['download']) ? 'true' : 'false',
+            'copy_text' => !empty($attributes['copy_text']) ? 'true' : 'false',
+            'add_text' => !empty($attributes['add_text']) ? 'true' : 'false',
+            'draw' => !empty($attributes['draw']) ? 'true' : 'false',
+            'doc_rotation' => !empty($attributes['doc_rotation']) ? 'true' : 'false',
+            'add_image' => !empty($attributes['add_image']) ? 'true' : 'false',
+            'doc_details' => !empty($attributes['doc_details']) ? 'true' : 'false',
+            'zoom_in' => !empty($attributes['zoomIn']) ? 'true' : 'false',
+            'zoom_out' => !empty($attributes['zoomOut']) ? 'true' : 'false',
+            'fit_view' => !empty($attributes['fitView']) ? 'true' : 'false',
+            'bookmark' => !empty($attributes['bookmark']) ? 'true' : 'false',
+            'flipbook_toolbar_position' => !empty($attributes['flipbook_toolbar_position']) ? $attributes['flipbook_toolbar_position'] : 'bottom',
+            'flipbook_rtl' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['flipbookPageFlipRTL']) ? 'true' : 'false',
+            'flipbook_highlight_links' => !empty($attributes['flipbookHighlightLinks']) ? 'true' : 'false',
+            'flipbook_highlight_color' => isset($attributes['flipbookHighlightColor']) ? esc_attr($attributes['flipbookHighlightColor']) : '',
+            'selection_tool' => isset($attributes['selection_tool']) ? esc_attr($attributes['selection_tool']) : '0',
+            'scrolling' => isset($attributes['scrolling']) ? esc_attr($attributes['scrolling']) : '-1',
+            'spreads' => isset($attributes['spreads']) ? esc_attr($attributes['spreads']) : '-1',
+            'watermark_text' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkText']) ? esc_attr($attributes['watermarkText']) : '',
+            'watermark_font_size' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkFontSize']) ? esc_attr($attributes['watermarkFontSize']) : '48',
+            'watermark_color' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkColor']) ? esc_attr($attributes['watermarkColor']) : '#000000',
+            'watermark_opacity' => defined('EMBEDPRESS_SL_ITEM_SLUG') && isset($attributes['watermarkOpacity']) ? esc_attr($attributes['watermarkOpacity']) : '15',
+            'watermark_style' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['watermarkStyle']) ? esc_attr($attributes['watermarkStyle']) : 'center',
+        );
+
+        // Add custom color for custom theme mode
+        if ($urlParamData['themeMode'] === 'custom') {
+            $urlParamData['customColor'] = !empty($attributes['customColor']) ? $attributes['customColor'] : '#403A81';
+        }
+
+        // Handle flip-book viewer style
+        if (isset($attributes['viewerStyle']) && $attributes['viewerStyle'] === 'flip-book') {
+            return "&key=" . base64_encode(mb_convert_encoding(http_build_query($urlParamData), 'UTF-8'));
+        }
+
+        return "#key=" . base64_encode(mb_convert_encoding(http_build_query($urlParamData), 'UTF-8'));
+    }
+
+    /**
+     * Generate document parameters for viewer configuration
+     * Based on document-specific attributes
+     */
+    private static function generate_document_params($attributes)
+    {
+        $urlParamData = array(
+            'theme_mode' => !empty($attributes['themeMode']) ? $attributes['themeMode'] : 'default',
+            'presentation' => !empty($attributes['presentation']) ? 'true' : 'false',
+            'position' => $attributes['position'] ?? 'top',
+            'download' => !empty($attributes['download']) ? 'true' : 'false',
+            'draw' => !empty($attributes['draw']) ? 'true' : 'false',
+        );
+
+        // Add custom color for custom theme mode
+        if ($urlParamData['theme_mode'] === 'custom') {
+            $urlParamData['custom_color'] = !empty($attributes['customColor']) ? $attributes['customColor'] : '#343434';
+        }
+
+        return '?' . http_build_query($urlParamData);
+    }
+
+    /**
+     * Extract basic configuration from attributes
+     *
+     * @param array $attributes Block attributes
+     * @return array Basic configuration
+     */
+    private static function extract_basic_config($attributes)
+    {
+        return [
+            'block_id'      => !empty($attributes['clientId']) ? $attributes['clientId'] : '',
+            'custom_player' => !empty($attributes['customPlayer']) ? $attributes['customPlayer'] : 0,
+            'insta_layout'  => !empty($attributes['instaLayout']) ? ' ' . $attributes['instaLayout'] : ' insta-grid',
+            'mode'          => !empty($attributes['mode']) ? ' ep-google-photos-' . $attributes['mode'] : '',
+            'embed_type'    => !empty($attributes['cEmbedType']) ? ' ' . $attributes['cEmbedType'] : '',
+            'url'           => $attributes['url'] ?? '',
+        ];
+    }
+
+    /**
+     * Build carousel configuration
+     *
+     * @param array  $attributes Block attributes
+     * @param string $client_id  Client ID
+     * @return array Carousel configuration
+     */
+    private static function build_carousel_config($attributes, $client_id)
+    {
+        $carousel_options = '';
+        $carousel_id = '';
+
+        if (!empty($attributes['instaLayout']) && $attributes['instaLayout'] === 'insta-carousel') {
+            $carousel_id = 'data-carouselid="' . esc_attr($client_id) . '"';
+
+            // Every option below is numeric or boolean. Cast rather than pass
+            // through: these values are author-supplied block attributes and are
+            // not constrained by the editor UI when the block markup is posted
+            // directly (REST / code editor).
+            $options = [
+                'layout'          => 'insta-carousel',
+                'slideshow'       => !empty($attributes['slidesShow']) ? absint($attributes['slidesShow']) : 5,
+                'autoplay'        => !empty($attributes['carouselAutoplay']) ? 1 : 0,
+                'autoplayspeed'   => !empty($attributes['autoplaySpeed']) ? absint($attributes['autoplaySpeed']) : 3000,
+                'transitionspeed' => !empty($attributes['transitionSpeed']) ? absint($attributes['transitionSpeed']) : 1000,
+                'loop'            => !empty($attributes['carouselLoop']) ? 1 : 0,
+                'arrows'          => !empty($attributes['carouselArrows']) ? 1 : 0,
+                'spacing'         => !empty($attributes['carouselSpacing']) ? absint($attributes['carouselSpacing']) : 0
+            ];
+
+            $carousel_options = 'data-carousel-options="' . esc_attr(wp_json_encode($options)) . '"';
+        }
+
+        return [
+            'carousel_id'      => $carousel_id,
+            'carousel_options' => $carousel_options,
+        ];
+    }
+
+    /**
+     * Build player configuration
+     *
+     * @param array  $attributes Block attributes
+     * @param string $client_id  Client ID
+     * @return array Player configuration
+     */
+    private static function build_player_config($attributes, $client_id)
+    {
+        $custom_player = '';
+        $player_options = '';
+        $custom_player_enabled = !empty($attributes['customPlayer']) ? $attributes['customPlayer'] : 0;
+
+        if (!empty($custom_player_enabled)) {
+            $is_self_hosted = Helper::check_media_format($attributes['url']);
+            $custom_player = 'data-playerid="' . esc_attr($client_id) . '"';
+
+            $options = self::build_player_options($attributes, $is_self_hosted);
+            // Wrap in quotes — htmlentities(..., ENT_QUOTES) already encoded `"` as
+            // `&quot;`, but values like email-capture headlines can contain spaces,
+            // which would terminate an unquoted attribute mid-JSON and break
+            // initplyr.js's JSON.parse, silently disabling the custom player.
+            $player_options = 'data-options="' . htmlentities(json_encode($options), ENT_QUOTES) . '"';
+        }
+
+        return [
+            'custom_player'   => $custom_player,
+            'player_options'  => $player_options,
+        ];
+    }
+
+    /**
+     * Build player options array
+     *
+     * @param array $attributes     Block attributes
+     * @param array $is_self_hosted Self-hosted media info
+     * @return array Player options
+     */
+    private static function build_player_options($attributes, $is_self_hosted)
+    {
+        $options = [
+            'rewind'           => !empty($attributes['playerRewind']),
+            'restart'          => !empty($attributes['playerRestart']),
+            'pip'              => !empty($attributes['playerPip']),
+            'poster_thumbnail' => $attributes['posterThumbnail'] ?? '',
+            'player_color'     => $attributes['playerColor'] ?? '',
+            'player_preset'    => $attributes['playerPreset'] ?? 'preset-default',
+            'fast_forward'     => !empty($attributes['playerFastForward']),
+            'player_tooltip'   => !empty($attributes['playerTooltip']),
+            'hide_controls'    => !empty($attributes['playerHideControls']),
+            'download'         => !empty($attributes['playerDownload']),
+        ];
+
+        // Pro: advanced custom-player feature data (auto resume, timed CTA,
+        // chapters, email capture, action lock, adaptive streaming, heatmap,
+        // LMS tracking, privacy mode, end screen). Pro plugin populates the
+        // array; with Pro disabled this is a no-op and the keys never reach
+        // the data-options blob — frontend skips those features entirely.
+        $options = apply_filters('embedpress/gutenberg/advanced_player_options', $options, $attributes);
+
+        // Add conditional options
+        $conditional_options = [
+            'fullscreen' => 'fullscreen',
+            'starttime'  => 'start',
+            'endtime'    => 'end',
+            'relatedvideos' => 'rel',
+            'muteVideo'  => 'mute',
+            'vstarttime' => 't',
+            'vautoplay'  => 'vautoplay',
+            'vautopause' => 'autopause',
+            'vdnt'       => 'dnt',
+        ];
+
+        foreach ($conditional_options as $attr_key => $option_key) {
+            if (!empty($attributes[$attr_key])) {
+                $options[$option_key] = $attributes[$attr_key];
+            }
+        }
+
+        // Add self-hosted options
+        if (!empty($is_self_hosted['selhosted'])) {
+            $options['self_hosted'] = $is_self_hosted['selhosted'];
+            $options['hosted_format'] = $is_self_hosted['format'];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Country Restriction (Pro)
+     *
+     * Returns the HTML restricted-fallback when the viewer's country is
+     * blocked, or `false` to render normally. Reads country from
+     * Cloudflare's `CF-IPCountry` header, falling back to common Apache
+     * GeoIP / proxy headers. If no country can be detected, allow.
+     *
+     * Adds `Vary: CF-IPCountry` so caches can vary per-country.
+     */
+    /**
+     * Resolve the visitor's ISO country code. Order:
+     *   1. CDN / reverse-proxy headers (zero-cost when present)
+     *   2. `embedpress_visitor_country` filter (lets sites inject their own)
+     *   3. Free HTTP GeoIP lookup at ipwho.is, cached per-IP for 12h
+     *
+     * Returns '' (fail-open) if every source is unavailable so a misconfigured
+     * lookup never silently blocks legitimate visitors.
+     */
+    public static function resolve_visitor_country_public()
+    {
+        return self::resolve_visitor_country();
+    }
+
+    private static function resolve_visitor_country()
+    {
+        $country = '';
+        foreach (['HTTP_CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'HTTP_X_COUNTRY_CODE'] as $key) {
+            if (!empty($_SERVER[$key])) {
+                $country = strtoupper(sanitize_text_field($_SERVER[$key]));
+                break;
+            }
+        }
+        $country = apply_filters('embedpress_visitor_country', $country);
+        if ($country) return $country;
+
+        $ip = self::client_ip();
+        if (!$ip) return '';
+
+        $cache_key = 'ep_geo_' . md5($ip);
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached === '__none__' ? '' : $cached;
+        }
+
+        $resp = wp_remote_get('https://ipwho.is/' . rawurlencode($ip) . '?fields=country_code,success', [
+            'timeout' => 2,
+        ]);
+        if (is_wp_error($resp)) {
+            // Negative-cache briefly so failed lookups don't repeat per-render.
+            set_transient($cache_key, '__none__', 5 * MINUTE_IN_SECONDS);
+            return '';
+        }
+        $body = json_decode(wp_remote_retrieve_body($resp), true);
+        $code = (is_array($body) && !empty($body['country_code'])) ? strtoupper($body['country_code']) : '';
+        set_transient($cache_key, $code ?: '__none__', $code ? 12 * HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS);
+        return $code;
+    }
+
+    private static function client_ip()
+    {
+        foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR'] as $key) {
+            if (empty($_SERVER[$key])) continue;
+            $candidate = trim(explode(',', $_SERVER[$key])[0]);
+            if (filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return $candidate;
+            }
+            // Allow private IPs only as last-resort REMOTE_ADDR (dev environments).
+            if ($key === 'REMOTE_ADDR' && filter_var($candidate, FILTER_VALIDATE_IP)) {
+                return $candidate;
+            }
+        }
+        return '';
+    }
+
+
+    /**
+     * Rewrite self-hosted video / source URLs to the configured CDN URL
+     * when an attachment has been offloaded. Best-effort regex pass over
+     * the embed HTML.
+     */
+
+    /**
+     * Get embed content with dynamic rendering
+     *
+     * @param array  $attributes Block attributes
+     * @param string $content    Block content
+     * @return string Embed content
+     */
+    private static function get_embed_content($attributes, $content)
+    {
+        return apply_filters('embedpress_render_dynamic_content', $content, $attributes);
+    }
+
+    /**
+     * Build styling configuration
+     *
+     * @param array $attributes      Block attributes
+     * @param array $protection_data Protection data
+     * @return array Styling configuration
+     */
+    private static function build_styling_config($attributes, $protection_data)
+    {
+        $client_id = $protection_data['client_id'];
+
+        // Content sharing classes
+        $content_share_class = !empty($attributes['contentShare']) ? 'ep-content-share-enabled' : '';
+        $share_position = $attributes['sharePosition'] ?? 'right';
+        $share_position_class = !empty($attributes['contentShare']) ? 'ep-share-position-' . $share_position : '';
+
+        // Content protection classes
+        $password_correct = $_COOKIE['password_correct_' . $client_id] ?? '';
+        $hash_pass = hash('sha256', wp_salt(32) . md5($attributes['contentPassword'] ?? ''));
+        $content_protection_class = 'ep-content-protection-enabled';
+
+        if (empty($attributes['lockContent']) || empty($attributes['contentPassword']) || $hash_pass === $password_correct) {
+            $content_protection_class = 'ep-content-protection-disabled';
+        }
+
+        // Alignment classes
+        $alignment = self::get_alignment_class($attributes['align'] ?? '');
+
+        // Ad manager attributes
+        $ads_attrs = self::build_ads_attributes($attributes, $client_id);
+
+        // Custom branding styles and HTML
+        $custom_branding = self::build_custom_branding($attributes, $client_id);
+
+        // Media format classes
+        $hosted_format = self::get_hosted_format($attributes);
+        $yt_channel_class = (isset($attributes['url']) && Helper::is_youtube_channel_or_playlist($attributes['url'])) ? 'embedded-youtube-channel' : '';
+
+        $auto_pause = !empty($attributes['autoPause']) ? ' enabled-auto-pause' : '';
+
+        return [
+            'content_share_class'      => $content_share_class,
+            'share_position_class'     => $share_position_class,
+            'content_protection_class' => $content_protection_class,
+            'alignment'                => $alignment,
+            'ads_attrs'                => $ads_attrs,
+            'custom_branding'          => $custom_branding,
+            'hosted_format'            => $hosted_format,
+            'yt_channel_class'         => $yt_channel_class,
+            'auto_pause'               => $auto_pause,
+            'pass_hash_key'            => isset($attributes['contentPassword']) ? md5($attributes['contentPassword']) : '',
+        ];
+    }
+
+    /**
+     * Get alignment CSS class
+     *
+     * @param string $align Alignment value
+     * @return string CSS class
+     */
+    private static function get_alignment_class($align)
+    {
+        return isset(self::$alignment_classes[$align])
+            ? self::$alignment_classes[$align] . ' ep-clear'
+            : 'aligncenter';
+    }
+
+    /**
+     * Build ad manager attributes
+     *
+     * @param array  $attributes Block attributes
+     * @param string $client_id  Client ID
+     * @return string Ad attributes
+     */
+    private static function build_ads_attributes($attributes, $client_id)
+    {
+        if (empty($attributes['adManager'])) {
+            return '';
+        }
+
+        $ad = base64_encode(wp_json_encode($attributes));
+        return sprintf(
+            'data-sponsored-id="%s" data-sponsored-attrs="%s" class="sponsored-mask"',
+            esc_attr($client_id),
+            esc_attr($ad)
+        );
+    }
+
+    /**
+     * Get hosted media format
+     *
+     * @param array $attributes Block attributes
+     * @return string Media format
+     */
+    private static function get_hosted_format($attributes)
+    {
+        if (empty($attributes['customPlayer'])) {
+            return '';
+        }
+
+        $self_hosted = Helper::check_media_format($attributes['url']);
+        return $self_hosted['format'] ?? '';
+    }
+
+    /**
+     * Build custom branding configuration
+     *
+     * @param array  $attributes Block attributes
+     * @param string $client_id  Client ID
+     * @return array Custom branding configuration
+     */
+    private static function build_custom_branding($attributes, $client_id)
+    {
+        $custom_branding = [
+            'html' => '',
+            'styles' => ''
+        ];
+
+        // Check if custom logo is enabled
+        if (empty($attributes['customlogo'])) {
+            return $custom_branding;
+        }
+
+        $logo_url = $attributes['customlogo'];
+        $logo_x = $attributes['logoX'] ?? 5;
+        $logo_y = $attributes['logoY'] ?? 10;
+        $logo_opacity = $attributes['logoOpacity'] ?? 1;
+        $custom_logo_url = $attributes['customlogoUrl'] ?? '';
+
+        // Generate custom logo styles
+        $custom_branding['styles'] = sprintf(
+            '#ep-gutenberg-content-%s img.watermark {
+                border: 0;
+                position: absolute;
+                bottom: %s%%;
+                right: %s%%;
+                max-width: 150px;
+                max-height: 75px;
+                -o-transition: opacity 0.5s ease-in-out;
+                -moz-transition: opacity 0.5s ease-in-out;
+                -webkit-transition: opacity 0.5s ease-in-out;
+                transition: opacity 0.5s ease-in-out;
+                z-index: 1;
+                opacity: %s;
+            }
+            #ep-gutenberg-content-%s img.watermark:hover {
+                opacity: 1;
+            }',
+            esc_attr($client_id),
+            esc_attr($logo_y),
+            esc_attr($logo_x),
+            esc_attr($logo_opacity),
+            esc_attr($client_id)
+        );
+
+        // Generate custom logo HTML
+        $logo_html = sprintf(
+            '<img decoding="async" src="%s" class="watermark ep-custom-logo" width="auto" height="auto" alt="">',
+            esc_url($logo_url)
+        );
+
+        // Wrap with link if URL is provided
+        if (!empty($custom_logo_url)) {
+            $logo_html = sprintf(
+                '<a href="%s" target="_blank">%s</a>',
+                esc_url($custom_logo_url),
+                $logo_html
+            );
+        }
+
+        $custom_branding['html'] = $logo_html;
+
+        return $custom_branding;
+    }
+
+    /**
+     * Generate the final HTML output
+     *
+     * @param array  $attributes            Block attributes
+     * @param string $embed                 Embed content
+     * @param array  $config                Basic configuration
+     * @param array  $carousel_config       Carousel configuration
+     * @param array  $player_config         Player configuration
+     * @param array  $styling               Styling configuration
+     * @param array  $protection_data       Protection data
+     * @param bool   $should_display_content Whether content should be displayed
+     * @return string Final HTML output
+     */
+    private static function generate_final_html($attributes, $embed, $config, $carousel_config, $player_config, $styling, $protection_data, $should_display_content)
+    {
+        ob_start();
+
+        // Extract variables for template
+        $url = $config['url'];
+        $block_id = $config['block_id'];
+        $client_id = $protection_data['client_id'];
+        $content_id = $protection_data['content_id'];
+        $content_share = $protection_data['content_share'];
+
+        // Build wrapper classes
+        $wrapper_classes = self::build_wrapper_classes($styling, $config);
+        $embed_wrapper_classes = self::build_embed_wrapper_classes($attributes);
+        $content_wrapper_classes = self::build_content_wrapper_classes($attributes, $config, $styling);
+
+        // Cap the content wrapper width to the block's width control so the
+        // outer wrapper doesn't render wider than the embed itself (the inner
+        // .plyr already gets width/height inline).
+        $content_wrapper_style = '';
+        if (!empty($attributes['width'])) {
+            $unit = ($attributes['unitoption'] ?? 'px') === '%' ? '%' : 'px';
+            $content_wrapper_style = 'max-width:' . intval($attributes['width']) . $unit;
+            // max-width alone leaves the wrapper flush-left; mirror the block's
+            // align control so centered/right alignments still take effect.
+            $align = $attributes['align'] ?? '';
+            if ($align === 'center') {
+                $content_wrapper_style .= ';margin-left:auto;margin-right:auto';
+            } elseif ($align === 'right') {
+                $content_wrapper_style .= ';margin-left:auto;margin-right:0';
+            }
+        }
+
+        // Pro: CDN Offloading and Advanced Privacy Mode. Filters are
+        // no-ops without Pro; the Pro callbacks gate on the toggle.
+        $embed = apply_filters('embedpress/gutenberg/cdn_rewrite_html', $embed, $attributes);
+        $embed = apply_filters('embedpress/gutenberg/privacy_mode_html', $embed, $attributes);
+        if (!empty($attributes['customPlayer']) && !empty($attributes['playerPrivacyMode'])) {
+            // Mirror the Pro gate so the click-to-load overlay class
+            // attaches to the wrapper. Without Pro the overlay JS never
+            // runs, but the unused class is harmless.
+            $content_wrapper_classes .= ' ep-privacy-pending';
+        }
+
+    ?>
+        <?php if (!empty($styling['custom_branding']['styles'])): ?>
+            <style>
+                <?php echo $styling['custom_branding']['styles']; ?>
+            </style>
+        <?php endif; ?>
+
+        <div class="embedpress-gutenberg-wrapper source-provider-<?php echo esc_attr( Helper::get_provider_name($url) ); ?> <?php echo esc_attr($wrapper_classes); ?>" id="<?php echo esc_attr($block_id); ?>" data-embed-type="<?php echo esc_attr( Helper::get_provider_name($url) ); ?> ">
+            <div class="wp-block-embed__wrapper <?php echo esc_attr($embed_wrapper_classes); ?>">
+                <div id="ep-gutenberg-content-<?php echo esc_attr($client_id) ?>" class="ep-gutenberg-content<?php echo esc_attr($styling['auto_pause']); ?>">
+                    <div <?php echo $styling['ads_attrs']; // complete escaped attribute pair(s); esc_attr would double-encode the quotes ?>>
+                        <div class="ep-embed-content-wraper <?php echo esc_attr($content_wrapper_classes); ?>"
+                            <?php if (!empty($content_wrapper_style)): ?>style="<?php echo esc_attr($content_wrapper_style); ?>"<?php endif; ?>
+                            <?php echo $player_config['custom_player']; // complete escaped attribute pair(s); esc_attr would double-encode the quotes ?>
+                            <?php echo $player_config['player_options']; // already a complete escaped attribute (data-options="..."); esc_attr would double-encode the outer quotes ?>
+                            <?php echo $carousel_config['carousel_id']; // complete escaped attribute pair(s); esc_attr would double-encode the quotes ?>
+                            <?php echo $carousel_config['carousel_options']; // complete escaped attribute pair(s); esc_attr would double-encode the quotes ?>>
+
+                            <?php
+                            self::render_embed_content($embed, $content_share, $content_id, $attributes, $should_display_content, $protection_data, $styling);
+                            ?>
+                        </div>
+
+                        <?php self::render_ad_template($attributes, $embed, $client_id); ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php
+
+        return ob_get_clean();
+    }
+
+    /**
+     * Build wrapper CSS classes
+     *
+     * @param array $styling Styling configuration
+     * @param array $config  Basic configuration
+     * @return string CSS classes
+     */
+    private static function build_wrapper_classes($styling, $config)
+    {
+        return trim(sprintf(
+            '%s %s %s %s%s',
+            $styling['alignment'],
+            $styling['content_share_class'],
+            $styling['share_position_class'],
+            $styling['content_protection_class'],
+            $config['embed_type']
+        ));
+    }
+
+    /**
+     * Build embed wrapper CSS classes
+     *
+     * @param array $attributes Block attributes
+     * @return string CSS classes
+     */
+    private static function build_embed_wrapper_classes($attributes)
+    {
+        $classes = [];
+
+        if (!empty($attributes['contentShare'])) {
+            $share_position = $attributes['sharePosition'] ?? 'right';
+            $classes[] = 'position-' . $share_position . '-wraper';
+        }
+
+        if (($attributes['videosize'] ?? '') === 'responsive') {
+            $classes[] = 'ep-video-responsive';
+        }
+
+        return implode(' ', $classes);
+    }
+
+    /**
+     * Build content wrapper CSS classes
+     *
+     * @param array $attributes Block attributes
+     * @param array $config     Basic configuration
+     * @param array $styling    Styling configuration
+     * @return string CSS classes
+     */
+    private static function build_content_wrapper_classes($attributes, $config, $styling)
+    {
+        return trim(sprintf(
+            '%s%s%s %s %s',
+            $attributes['playerPreset'] ?? '',
+            $config['insta_layout'],
+            $config['mode'],
+            $styling['hosted_format'],
+            $styling['yt_channel_class']
+        ));
+    }
+
+    /**
+     * Render embed content with protection logic
+     *
+     * @param string $embed                 Embed content
+     * @param string $content_share         Content share setting
+     * @param string $content_id            Content ID
+     * @param array  $attributes            Block attributes
+     * @param bool   $should_display_content Whether content should be displayed
+     * @param array  $protection_data       Protection data
+     * @param array  $styling               Styling configuration
+     */
+    private static function render_embed_content($embed, $content_share, $content_id, $attributes, $should_display_content, $protection_data, $styling)
+    {
+        if ($should_display_content) {
+            self::render_displayable_content($embed, $content_share, $content_id, $attributes, $styling);
+        } else {
+            self::render_protected_content($embed, $content_share, $content_id, $attributes, $protection_data, $styling);
+        }
+    }
+
+    /**
+     * Normalize embed content to a string.
+     *
+     * $embed originates from the public `embedpress_render_dynamic_content`
+     * filter, so providers and third-party code may return either a string or
+     * an oEmbed-style array. That array is not guaranteed to carry an 'html'
+     * key — e.g. InstagramFeed only assigns it when a feed template was built,
+     * so an empty feed or cold cache (typical for sitemap/bot requests) yields
+     * ['provider_name' => ...] with no 'html'.
+     *
+     * Reading it unguarded raised "Undefined array key \"html\"", and appending
+     * to the array is a TypeError on PHP 8. Normalizing once at entry keeps
+     * both render paths working on a plain string.
+     *
+     * @param mixed $embed Embed content (string, array, or neither)
+     * @return string Embed HTML, or '' when unavailable
+     */
+    private static function normalize_embed_html($embed)
+    {
+        if (is_array($embed)) {
+            return isset($embed['html']) ? (string) $embed['html'] : '';
+        }
+
+        if (is_scalar($embed)) {
+            return (string) $embed;
+        }
+
+        return '';
+    }
+
+    /**
+     * Render displayable content
+     *
+     * @param string $embed        Embed content
+     * @param string $content_share Content share setting
+     * @param string $content_id   Content ID
+     * @param array  $attributes   Block attributes
+     * @param array  $styling      Styling configuration (optional)
+     */
+    private static function render_displayable_content($embed, $content_share, $content_id, $attributes, $styling = [])
+    {
+        $embed = self::normalize_embed_html($embed);
+
+        // Add custom branding if available
+        if (!empty($styling['custom_branding']['html'])) {
+            $embed .= $styling['custom_branding']['html'];
+        }
+
+        if (!empty($content_share)) {
+            $embed .= Helper::embed_content_share($content_id, $attributes);
+        }
+
+        echo $embed;
+    }
+
+    /**
+     * Render protected content
+     *
+     * @param string $embed           Embed content
+     * @param string $content_share   Content share setting
+     * @param string $content_id      Content ID
+     * @param array  $attributes      Block attributes
+     * @param array  $protection_data Protection data
+     * @param array  $styling         Styling configuration
+     */
+    private static function render_protected_content($embed, $content_share, $content_id, $attributes, $protection_data, $styling)
+    {
+        $embed = self::normalize_embed_html($embed);
+
+        // Add custom branding if available
+        if (!empty($styling['custom_branding']['html'])) {
+            $embed .= $styling['custom_branding']['html'];
+        }
+
+        if (!empty($content_share)) {
+            $embed .= Helper::embed_content_share($content_id, $attributes);
+        }
+
+        if ($protection_data['protection_type'] === 'password') {
+            echo '<div id="ep-gutenberg-content-' . esc_attr($protection_data['client_id']) . '" class="ep-gutenberg-content">';
+            do_action('embedpress/display_password_form', $protection_data['client_id'], $embed, $styling['pass_hash_key'], $attributes);
+            echo '</div>';
+        } else {
+            do_action('embedpress/content_protection_content', $protection_data['client_id'], $protection_data['protection_message'], $protection_data['user_role']);
+        }
+    }
+
+    /**
+     * Render ad template if enabled
+     *
+     * @param array  $attributes Block attributes
+     * @param string $embed      Embed content
+     * @param string $client_id  Client ID
+     */
+    private static function render_ad_template($attributes, $embed, $client_id)
+    {
+        if (!empty($attributes['adManager'])) {
+            $embed = apply_filters('embedpress/generate_ad_template', $embed, $client_id, $attributes, 'gutenberg');
+        }
+    }
+
+    /**
+     * YouTube block legacy render method
+     *
+     * @param array $attributes Block attributes
+     * @param string $content Block content
+     * @param object $block Block object (unused but kept for compatibility)
+     * @return string Rendered HTML content
+     */
+    public static function render_youtube_block($attributes, $content = '', $block = null)
+    {
+
+        if (!empty($content)) {
+            return $content;
+        }
+        // Extract basic attributes for YouTube block
+        $iframe_src = $attributes['iframeSrc'] ?? '';
+        $align = $attributes['align'] ?? 'center';
+
+        // If no iframe source is provided, return empty
+        if (empty($iframe_src)) {
+            return '';
+        }
+
+        // Validate YouTube URL
+        if (!self::is_youtube_url($iframe_src)) {
+            return '';
+        }
+
+        // Apply YouTube parameters filter
+        $youtube_params = apply_filters('embedpress_gutenberg_youtube_params', []);
+        $processed_iframe_url = $iframe_src;
+
+        foreach ($youtube_params as $param => $value) {
+            $processed_iframe_url = add_query_arg($param, $value, $processed_iframe_url);
+        }
+
+        // Build alignment class
+        $align_class = 'align' . $align;
+
+        // Extract width/height from attributes
+        $width = isset($attributes['width']) ? intval($attributes['width']) : 640;
+        $height = isset($attributes['height']) ? intval($attributes['height']) : 360;
+
+        // Generate YouTube block HTML
+        ob_start();
+    ?>
+        <div class="ose-youtube responsive wp-block-embed-youtube ose-youtube-single-video <?php echo esc_attr($align_class); ?>" style="max-width: 100%;">
+            <iframe src="<?php echo esc_url($processed_iframe_url); ?>"
+                allowtransparency="true"
+                allowfullscreen="true"
+                frameborder="0"
+                style="max-width: 100%;"
+                width="<?php echo esc_attr($width); ?>" height="<?php echo esc_attr($height); ?>">
+            </iframe>
+        </div>
+    <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Validate if URL is a YouTube URL
+     *
+     * @param string $url URL to validate
+     * @return bool True if valid YouTube URL, false otherwise
+     */
+    private static function is_youtube_url($url)
+    {
+        $pattern = '/^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?(.*&)?v=|(embed|v)\/))|youtu.be\/([a-zA-Z0-9_-]{11})/';
+        return preg_match($pattern, $url);
+    }
+
+    /**
+     * Wistia block legacy render method
+     *
+     * @param array $attributes Block attributes
+     * @param string $content Block content
+     * @param object $block Block object (unused but kept for compatibility)
+     * @return string Rendered HTML content
+     */
+    public static function render_wistia_block($attributes, $content = '', $block = null)
+    {
+        if (!empty($content)) {
+            return $content;
+        }
+
+        // Extract basic attributes for Wistia block
+        $url = $attributes['url'] ?? '';
+        $iframe_src = $attributes['iframeSrc'] ?? '';
+        $align = $attributes['align'] ?? 'center';
+
+        // If no URL is provided, return empty
+        if (empty($url)) {
+            return '';
+        }
+
+        // Extract Wistia media ID from URL
+        $wistia_id = self::extract_wistia_id($url);
+        if (empty($wistia_id)) {
+            return '';
+        }
+
+        // Build alignment class
+        $align_class = 'align' . $align;
+
+        // Generate Wistia block HTML
+        ob_start();
+    ?>
+        <div class="ose-wistia wp-block-embed-youtube <?php echo esc_attr($align_class); ?>" id="wistia_<?php echo esc_attr($wistia_id); ?>">
+            <iframe src="<?php echo esc_url($iframe_src); ?>"
+                allowtransparency="true"
+                frameborder="0"
+                class="wistia_embed"
+                name="wistia_embed"
+                width="600"
+                height="330">
+            </iframe>
+            <?php do_action('embedpress_gutenberg_wistia_block_after_embed', $attributes); ?>
+        </div>
+<?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Extract Wistia media ID from URL
+     *
+     * @param string $url Wistia URL
+     * @return string|false Wistia media ID or false if not found
+     */
+    private static function extract_wistia_id($url)
+    {
+        preg_match('~medias/(.*)~i', esc_url($url), $matches);
+        return isset($matches[1]) ? $matches[1] : false;
+    }
+
+    /**
+     * Calendar block render method
+     *
+     * @param array $attributes Block attributes
+     * @param string $content Block content
+     * @param object $block Block object (unused but kept for compatibility)
+     * @return string Rendered HTML content
+     */
+    public static function render_embedpress_calendar($attributes, $content = '', $block = null)
+    {
+        if (!empty($content)) {
+            return $content;
+        }
+
+        // Extract basic attributes for Calendar block
+        $url = $attributes['url'] ?? '';
+        $width = $attributes['width'] ?? '600';
+        $height = $attributes['height'] ?? '600';
+        $powered_by = $attributes['powered_by'] ?? false;
+        $is_public = $attributes['is_public'] ?? true;
+        $align = $attributes['align'] ?? 'center';
+
+        $align_class = 'align' . $align;
+
+        // Private branch: same path Elementor uses — fire the action that Pro
+        // ([Embedpress\Pro\Filters\Calendar]) hooks to emit the epgc-calendar
+        // shortcode markup. Frontend JS then hydrates it via the AJAX endpoint
+        // (which has its own transient cache via epgc_cache_time).
+        if (!$is_public) {
+            if (!apply_filters('embedpress/is_allow_rander', false)) {
+                return '';
+            }
+            // Enqueue the FullCalendar bundle. The Elementor widget gets these
+            // automatically via get_script_depends(); the Gutenberg block needs
+            // an explicit call at render time since block.json has no viewScript.
+            if (class_exists('Embedpress_Google_Helper')) {
+                \Embedpress_Google_Helper::enqueue_scripts(); // ensures registration
+            }
+            wp_enqueue_style('fullcalendar');
+            wp_enqueue_style('fullcalendar_daygrid');
+            wp_enqueue_style('fullcalendar_timegrid');
+            wp_enqueue_style('fullcalendar_list');
+            wp_enqueue_style('epgc');
+            wp_enqueue_style('tippy_light');
+            wp_enqueue_script('fullcalendar_moment_timezone');
+            wp_enqueue_script('fullcalendar_daygrid');
+            wp_enqueue_script('fullcalendar_timegrid');
+            wp_enqueue_script('fullcalendar_list');
+            wp_enqueue_script('fullcalendar_locales');
+            wp_enqueue_script('tippy');
+            wp_enqueue_script('epgc');
+            // Localize the nonce + ajax URL onto the epgc handle. LocalizationManager
+            // handles this on Elementor pages; on Gutenberg frontends we have to.
+            if (class_exists('\\EmbedPress\\Core\\LocalizationManager')) {
+                \EmbedPress\Core\LocalizationManager::setup_elementor_localization();
+            }
+
+            ob_start();
+            ?>
+            <figure class="wp-block-embedpress-embedpress-calendar <?php echo esc_attr($align_class); ?>" style="width: <?php echo esc_attr($width); ?>px; height: <?php echo esc_attr($height); ?>px;">
+                <?php do_action('embedpress_google_helper_shortcode', 10); ?>
+                <?php if ($powered_by) : ?>
+                    <p class="embedpress-el-powered"><?php echo esc_html__('Powered By EmbedPress', 'embedpress'); ?></p>
+                <?php endif; ?>
+            </figure>
+            <?php
+            return ob_get_clean();
+        }
+
+        // Public branch: iframe to calendar.google.com's embed view.
+        if (empty($url)) {
+            return '';
+        }
+        if (!self::is_google_calendar_url($url)) {
+            return '<p class="embedpress-el-powered">' . esc_html__('Invalid Calendar Link', 'embedpress') . '</p>';
+        }
+
+        $sanitized_url = esc_url($url);
+
+        ob_start();
+    ?>
+        <figure class="wp-block-embedpress-embedpress-calendar <?php echo esc_attr($align_class); ?>" style="width: <?php echo esc_attr($width); ?>px; height: <?php echo esc_attr($height); ?>px;">
+            <iframe src="<?php echo esc_url($sanitized_url); ?>"
+                    width="<?php echo esc_attr($width); ?>"
+                    height="<?php echo esc_attr($height); ?>"
+                    frameborder="0"
+                    scrolling="no"
+                    title="<?php echo esc_attr(self::get_iframe_title_from_url($url)); ?>">
+            </iframe>
+
+            <?php if ($powered_by) : ?>
+                <p class="embedpress-el-powered"><?php echo esc_html__('Powered By EmbedPress', 'embedpress'); ?></p>
+            <?php endif; ?>
+        </figure>
+    <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Validate if URL is a Google Calendar URL
+     *
+     * @param string $url URL to validate
+     * @return bool True if valid Google Calendar URL, false otherwise
+     */
+    private static function is_google_calendar_url($url)
+    {
+        $pattern = '/^https:\/\/calendar\.google\.com\/calendar\/(?:u\/\d+\/)?embed\?.*/';
+        return preg_match($pattern, $url);
+    }
+
+    /**
+     * Get iframe title from URL
+     *
+     * @param string $url URL to derive title from
+     * @return string Derived title
+     */
+    private static function get_iframe_title_from_url($url)
+    {
+        if (empty($url)) {
+            return '';
+        }
+
+        // Try getting title from WordPress attachment if it's a local file
+        $file_title = Helper::get_file_title($url);
+        if (!empty($file_title)) {
+            return $file_title;
+        }
+
+        // Try to get filename from URL
+        $path = parse_url($url, PHP_URL_PATH);
+        if ($path) {
+            $filename = basename($path);
+            // Remove extension
+            $filename = preg_replace('/\.[^.]+$/', '', $filename);
+            // Decode URL encoding
+            $filename = urldecode($filename);
+            // Replace hyphens/underscores with spaces
+            $filename = str_replace(['-', '_'], ' ', $filename);
+            
+            if (!empty($filename)) {
+                return ucfirst($filename);
+            }
+        }
+
+        // Fallback to domain name
+        $host = parse_url($url, PHP_URL_HOST);
+        if ($host) {
+            return $host;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Render PDF Gallery block
+     */
+    public static function render_pdf_gallery($attributes, $content = '', $block = null)
+    {
+        // If save.js produced valid content, return it (frontend JS will enhance it)
+        if (!empty($content)) {
+            return $content;
+        }
+
+        $items = isset($attributes['pdfItems']) ? $attributes['pdfItems'] : [];
+        if (empty($items)) {
+            return '';
+        }
+
+        $layout = isset($attributes['layout']) ? esc_attr($attributes['layout']) : 'grid';
+        $bookshelf_style = isset($attributes['bookshelfStyle']) ? esc_attr($attributes['bookshelfStyle']) : 'dark-wood';
+
+        // Pro gate: bookshelf requires Pro
+        if (($layout === 'bookshelf' || $layout === 'carousel') && !defined('EMBEDPRESS_SL_ITEM_SLUG')) {
+            $layout = 'grid';
+        }
+
+        $columns = isset($attributes['columns']) ? intval($attributes['columns']) : 3;
+        $columns_tablet = isset($attributes['columnsTablet']) ? intval($attributes['columnsTablet']) : 2;
+        $columns_mobile = isset($attributes['columnsMobile']) ? intval($attributes['columnsMobile']) : 1;
+        $gap = isset($attributes['gap']) ? intval($attributes['gap']) : 20;
+        $border_radius = isset($attributes['thumbnailBorderRadius']) ? intval($attributes['thumbnailBorderRadius']) : 8;
+        $aspect_ratio = isset($attributes['thumbnailAspectRatio']) ? esc_attr($attributes['thumbnailAspectRatio']) : '4:3';
+        $viewer_style = isset($attributes['viewerStyle']) ? esc_attr($attributes['viewerStyle']) : 'modern';
+        $client_id = isset($attributes['clientId']) ? esc_attr($attributes['clientId']) : '';
+        $gallery_id = 'ep-gallery-' . substr(md5(serialize($items)), 0, 8);
+
+        // Build viewer params
+        $viewer_params = self::generate_gallery_viewer_params($attributes);
+
+        // Carousel options
+        $carousel_options = '';
+        if ($layout === 'carousel' || $layout === 'bookshelf') {
+            $carousel_options = wp_json_encode([
+                'autoplay' => !empty($attributes['carouselAutoplay']),
+                'autoplaySpeed' => isset($attributes['carouselAutoplaySpeed']) ? intval($attributes['carouselAutoplaySpeed']) : 3000,
+                'loop' => isset($attributes['carouselLoop']) ? (bool)$attributes['carouselLoop'] : true,
+                'arrows' => isset($attributes['carouselArrows']) ? (bool)$attributes['carouselArrows'] : true,
+                'dots' => !empty($attributes['carouselDots']),
+                'slidesPerView' => isset($attributes['slidesPerView']) ? intval($attributes['slidesPerView']) : 3,
+            ]);
+        }
+
+        $style = sprintf(
+            '--ep-gallery-columns-desktop:%d;--ep-gallery-columns-tablet:%d;--ep-gallery-columns-mobile:%d;--ep-gallery-gap:%dpx;--ep-gallery-radius:%dpx;',
+            $columns, $columns_tablet, $columns_mobile, $gap, $border_radius
+        );
+
+        ob_start();
+        ?>
+        <div class="ep-pdf-gallery"
+             data-layout="<?php echo $layout; ?>"
+             data-shelf-style="<?php echo esc_attr($bookshelf_style); ?>"
+             data-columns="<?php echo $columns; ?>"
+             data-columns-tablet="<?php echo $columns_tablet; ?>"
+             data-columns-mobile="<?php echo $columns_mobile; ?>"
+             data-gap="<?php echo $gap; ?>"
+             data-border-radius="<?php echo $border_radius; ?>"
+             data-viewer-style="<?php echo $viewer_style; ?>"
+             data-viewer-params="<?php echo esc_attr($viewer_params); ?>"
+             data-gallery-id="<?php echo esc_attr($gallery_id); ?>"
+             <?php if ($carousel_options): ?>data-carousel-options="<?php echo esc_attr($carousel_options); ?>"<?php endif; ?>
+             style="<?php echo esc_attr($style); ?>">
+
+            <?php if ($layout === 'carousel' || $layout === 'bookshelf'): ?>
+            <div class="ep-pdf-gallery__carousel">
+                <div class="ep-pdf-gallery__carousel-track">
+            <?php else: ?>
+            <div class="ep-pdf-gallery__grid">
+            <?php endif; ?>
+
+                <?php foreach ($items as $index => $item):
+                    $pdf_url = isset($item['url']) ? esc_url($item['url']) : '';
+                    $pdf_name = isset($item['fileName']) ? esc_attr($item['fileName']) : '';
+                    $custom_thumb = isset($item['customThumbnailUrl']) ? esc_url($item['customThumbnailUrl']) : '';
+                    $auto_thumb = isset($item['autoThumbnailUrl']) ? esc_url($item['autoThumbnailUrl']) : '';
+                    $thumb_url = $custom_thumb ?: $auto_thumb;
+                ?>
+                <div class="ep-pdf-gallery__item"
+                     data-pdf-url="<?php echo $pdf_url; ?>"
+                     data-pdf-index="<?php echo intval($index); ?>"
+                     data-pdf-name="<?php echo $pdf_name; ?>">
+                    <div class="ep-pdf-gallery__thumbnail-wrap" data-ratio="<?php echo $aspect_ratio; ?>">
+                        <?php if ($thumb_url): ?>
+                            <img src="<?php echo $thumb_url; ?>" alt="<?php echo $pdf_name; ?>" />
+                        <?php else: ?>
+                            <canvas class="ep-pdf-gallery__canvas" data-pdf-src="<?php echo $pdf_url; ?>" data-loading="true"></canvas>
+                        <?php endif; ?>
+                        <div class="ep-pdf-gallery__overlay">
+                            <svg class="ep-pdf-gallery__view-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ep-pdf-gallery__book-title"><?php echo esc_html($pdf_name); ?></div>
+                </div>
+                <?php endforeach; ?>
+
+            <?php if ($layout === 'carousel' || $layout === 'bookshelf'): ?>
+                </div>
+                <button class="ep-pdf-gallery__carousel-prev" aria-label="Previous">
+                    <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button class="ep-pdf-gallery__carousel-next" aria-label="Next">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+                </button>
+                <div class="ep-pdf-gallery__carousel-dots"></div>
+            </div>
+            <?php else: ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Generate base64-encoded viewer params for PDF gallery
+     */
+    private static function generate_gallery_viewer_params($attributes)
+    {
+        $theme_mode = isset($attributes['themeMode']) ? $attributes['themeMode'] : 'default';
+
+        $params = [
+            'themeMode' => esc_attr($theme_mode),
+            'toolbar' => !empty($attributes['toolbar']) ? 'true' : 'false',
+            'position' => isset($attributes['position']) ? esc_attr($attributes['position']) : 'top',
+            'flipbook_toolbar_position' => isset($attributes['flipbook_toolbar_position']) ? esc_attr($attributes['flipbook_toolbar_position']) : 'bottom',
+            'flipbook_rtl' => defined('EMBEDPRESS_SL_ITEM_SLUG') && !empty($attributes['flipbookPageFlipRTL']) ? 'true' : 'false',
+            'flipbook_highlight_links' => !empty($attributes['flipbookHighlightLinks']) ? 'true' : 'false',
+            'flipbook_highlight_color' => isset($attributes['flipbookHighlightColor']) ? esc_attr($attributes['flipbookHighlightColor']) : '',
+            'presentation' => !empty($attributes['presentation']) ? 'true' : 'false',
+            'download' => !empty($attributes['download']) ? 'true' : 'false',
+            'copy_text' => !empty($attributes['copy_text']) ? 'true' : 'false',
+            'add_text' => !empty($attributes['add_text']) ? 'true' : 'false',
+            'draw' => !empty($attributes['draw']) ? 'true' : 'false',
+            'doc_rotation' => !empty($attributes['doc_rotation']) ? 'true' : 'false',
+            'doc_details' => !empty($attributes['doc_details']) ? 'true' : 'false',
+            'add_image' => !empty($attributes['add_image']) ? 'true' : 'false',
+            'zoom_in' => !empty($attributes['zoomIn']) ? 'true' : 'false',
+            'zoom_out' => !empty($attributes['zoomOut']) ? 'true' : 'false',
+            'fit_view' => !empty($attributes['fitView']) ? 'true' : 'false',
+            'bookmark' => !empty($attributes['bookmark']) ? 'true' : 'false',
+            'watermark_text' => defined('EMBEDPRESS_SL_ITEM_SLUG') && isset($attributes['watermarkText']) ? esc_attr($attributes['watermarkText']) : '',
+            'watermark_font_size' => defined('EMBEDPRESS_SL_ITEM_SLUG') && isset($attributes['watermarkFontSize']) ? intval($attributes['watermarkFontSize']) : 48,
+            'watermark_color' => defined('EMBEDPRESS_SL_ITEM_SLUG') && isset($attributes['watermarkColor']) ? esc_attr($attributes['watermarkColor']) : '#000000',
+            'watermark_opacity' => defined('EMBEDPRESS_SL_ITEM_SLUG') && isset($attributes['watermarkOpacity']) ? intval($attributes['watermarkOpacity']) : 15,
+            'watermark_style' => defined('EMBEDPRESS_SL_ITEM_SLUG') && isset($attributes['watermarkStyle']) ? esc_attr($attributes['watermarkStyle']) : 'center',
+        ];
+
+        if ($theme_mode === 'custom') {
+            $params['customColor'] = isset($attributes['customColor']) ? esc_attr($attributes['customColor']) : '#403A81';
+        }
+
+        $query_string = http_build_query($params);
+        if (function_exists('mb_convert_encoding')) {
+            $query_string = mb_convert_encoding($query_string, 'UTF-8');
+        }
+
+        return base64_encode($query_string);
+    }
+
+    /**
+     * Render the Google Reviews block. Maps the JS camelCase attributes to the
+     * shared GoogleReviewsRenderer args (snake_case) so block + Elementor +
+     * shortcode all emit identical markup.
+     */
+    public static function render_google_reviews($attributes, $content = '', $block = null)
+    {
+        \EmbedPress\Includes\Classes\GoogleReviewsRenderer::enqueue_assets();
+        return \EmbedPress\Includes\Classes\GoogleReviewsRenderer::render([
+            'place_id'   => isset($attributes['placeId']) ? sanitize_text_field($attributes['placeId']) : '',
+            'place_name' => isset($attributes['placeName']) ? sanitize_text_field($attributes['placeName']) : '',
+            'limit'      => isset($attributes['limit']) ? (int) $attributes['limit'] : 5,
+            'min_rating' => isset($attributes['minRating']) ? (int) $attributes['minRating'] : 0,
+            'layout'     => isset($attributes['layout']) ? sanitize_key($attributes['layout']) : 'list',
+            'show_photo' => isset($attributes['showPhoto']) ? (bool) $attributes['showPhoto'] : true,
+            'show_stars' => isset($attributes['showStars']) ? (bool) $attributes['showStars'] : true,
+            'show_date'  => isset($attributes['showDate']) ? (bool) $attributes['showDate'] : true,
+            'show_link'   => isset($attributes['showLink']) ? (bool) $attributes['showLink'] : false,
+            'show_images' => isset($attributes['showImages']) ? (bool) $attributes['showImages'] : true,
+            'columns'    => isset($attributes['columns']) ? (int) $attributes['columns'] : 3,
+            'max_width'  => isset($attributes['maxWidth']) ? (int) $attributes['maxWidth'] : 0,
+            'gap'        => isset($attributes['gap']) ? (int) $attributes['gap'] : 32,
+            'show_arrows'    => isset($attributes['showArrows']) ? (bool) $attributes['showArrows'] : true,
+            'show_dots'      => isset($attributes['showDots']) ? (bool) $attributes['showDots'] : true,
+            'carousel_loop'  => isset($attributes['carouselLoop']) ? (bool) $attributes['carouselLoop'] : true,
+            'autoplay_speed' => isset($attributes['autoplaySpeed']) ? (float) $attributes['autoplaySpeed'] : 5,
+            'show_summary'        => isset($attributes['showSummary']) ? (bool) $attributes['showSummary'] : true,
+            'show_summary_name'   => isset($attributes['showSummaryName']) ? (bool) $attributes['showSummaryName'] : true,
+            'show_summary_rating' => isset($attributes['showSummaryRating']) ? (bool) $attributes['showSummaryRating'] : true,
+            'show_summary_stars'  => isset($attributes['showSummaryStars']) ? (bool) $attributes['showSummaryStars'] : true,
+            'show_summary_count'  => isset($attributes['showSummaryCount']) ? (bool) $attributes['showSummaryCount'] : true,
+            'show_write_review'   => isset($attributes['showWriteReview']) ? (bool) $attributes['showWriteReview'] : true,
+            'summary_align'       => isset($attributes['summaryAlign']) ? sanitize_key($attributes['summaryAlign']) : 'left',
+            // Pro-extended attributes. Free's renderer ignores them; Pro's
+            // render filters read them off the args. Sanitized here so the
+            // contract holds regardless of which plugin consumes them.
+            'sort'         => isset($attributes['sort']) ? sanitize_key($attributes['sort']) : 'newest',
+            'keyword'      => isset($attributes['keyword']) ? sanitize_text_field($attributes['keyword']) : '',
+            'hide_empty'   => isset($attributes['hideEmpty']) ? (bool) $attributes['hideEmpty'] : false,
+            'fetch_all'    => isset($attributes['fetchAll']) ? (bool) $attributes['fetchAll'] : false,
+            'theme'        => isset($attributes['theme']) ? sanitize_key($attributes['theme']) : 'light',
+            'accent_color' => isset($attributes['accentColor']) ? sanitize_hex_color($attributes['accentColor']) : '',
+            'autoplay'     => isset($attributes['autoplay']) ? (bool) $attributes['autoplay'] : false,
+            'schema'       => isset($attributes['schema']) ? (bool) $attributes['schema'] : false,
+            'places'       => isset($attributes['places']) && is_array($attributes['places']) ? array_map('sanitize_text_field', $attributes['places']) : [],
+            'cache_ttl'    => isset($attributes['cacheTtl']) ? (int) $attributes['cacheTtl'] : 0,
+            'load_more'    => isset($attributes['loadMore']) ? (bool) $attributes['loadMore'] : false,
+            // No separate per-page control anymore: 0 means "use the count
+            // control (limit) as the page size" (see Pro page_size()).
+            'per_page'     => isset($attributes['perPage']) ? (int) $attributes['perPage'] : 0,
+            // EDITOR PREVIEW flag. The Gutenberg block previews via the
+            // /wp/v2/block-renderer REST route (REST_REQUEST + context=edit). In
+            // that case the renderer caps sliding layouts (carousel/marquee/
+            // spotlight) to a handful of cards instead of rendering up to 200 —
+            // a 200-card preview is ~1.3MB per request, and ServerSideRender
+            // re-fires on every attribute change, so rapid layout switches piled
+            // up huge in-flight requests and FROZE the editor. The frontend is
+            // unaffected (full set still renders there).
+            'is_editor_preview' => self::is_block_editor_preview_request(),
+        ]);
+    }
+
+    /**
+     * True when the current render is a Gutenberg block-editor SSR preview
+     * (the /wp/v2/block-renderer REST request with context=edit), so the
+     * renderer can serve a lightweight preview instead of the full frontend set.
+     */
+    private static function is_block_editor_preview_request(): bool
+    {
+        if (!defined('REST_REQUEST') || !REST_REQUEST) {
+            return false;
+        }
+        $route = isset($GLOBALS['wp']->query_vars['rest_route']) ? (string) $GLOBALS['wp']->query_vars['rest_route'] : '';
+        if (strpos($route, 'block-renderer') !== false) {
+            return true;
+        }
+        // Fallback: the block-renderer route also arrives via REQUEST_URI.
+        $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+        return strpos($uri, 'block-renderer') !== false;
+    }
+}
+?>

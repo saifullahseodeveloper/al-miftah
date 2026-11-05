@@ -1,0 +1,305 @@
+<?php
+namespace Elementor;
+
+/**
+ * Elementor Widget
+ * @package Charifund
+ * @since 1.0.0
+ */ 
+ 
+class Team_Grid_Five extends Widget_Base {
+
+	/**
+	 * Get widget name.
+	 * Retrieve button widget name.
+	 *
+	 * @since  1.0.0
+	 * @access public
+	 * @return string Widget name.
+	 */
+	public function get_name() {
+		return 'charifund-team-grid-five-widget';
+	}
+
+	/**
+	 * Get widget title.
+	 * Retrieve button widget title.
+	 *
+	 * @since  1.0.0
+	 * @access public
+	 * @return string Widget title.
+	 */
+	public function get_title() {
+		return esc_html__( 'Team Grid 05', 'charifund-core' );
+	}
+
+	/**
+	 * Get widget icon.
+	 * Retrieve button widget icon.
+	 *
+	 * @since  1.0.0
+	 * @access public
+	 * @return string Widget icon.
+	 */
+	public function get_icon() {
+		return 'eicon-flash';
+	}
+
+	/**
+	 * Get widget categories.
+	 * Retrieve the list of categories the button widget belongs to.
+	 * Used to determine where to display the widget in the editor.
+	 *
+	 * @since  2.0.0
+	 * @access public
+	 * @return array Widget categories.
+	 */
+	public function get_categories()
+    {
+        return ['charifund_widgets'];
+    }
+	
+	/**
+	 * Register button widget controls.
+	 * Adds different input fields to allow the user to change and customize the widget settings.
+	 *
+	 * @since  1.0.0
+	 * @access protected
+	 */
+	protected function register_controls() {
+
+		// Tab Start - 1
+
+		$this->start_controls_section(
+			'team_grid',
+			[
+				'label' => esc_html__( 'Team Grid', 'charifund-core' ),
+			]
+		);		
+		
+		$this->add_control(
+			'style',
+			[
+				'label'   => esc_html__( 'Select Style', 'charifund-core' ),
+				'type'    => Controls_Manager::SELECT,
+				'default' => 'style1',
+				'options' => array(
+					'style1'   => esc_html__( 'Style One', 'charifund-core' ),
+					'style2'   => esc_html__( 'Style Two', 'charifund-core' ),
+				),
+			]
+		);
+
+		$this->add_control(
+			'image',
+				[
+				  'label' => __( 'Image', 'charifund-core' ),
+				  'type' => Controls_Manager::MEDIA,
+				  'default' => ['url' => Utils::get_placeholder_image_src(),],
+				]
+		);	
+		
+		
+
+		$this->add_control(
+			'subtitle',
+			[
+				'label'       => __( 'Sub Title', 'charifund-core' ),
+				'type'        => Controls_Manager::TEXTAREA,
+				'dynamic'     => [
+					'active' => true,
+				],
+				'placeholder' => __( 'Enter your sub title', 'charifund-core' ),
+			]
+		);
+	
+		$this->add_control(
+				'title',
+				[
+					'label'       => __( 'Title', 'charifund-core' ),
+					'type'        => Controls_Manager::TEXTAREA,
+					'dynamic'     => [
+						'active' => true,
+					],
+					'placeholder' => __( 'Enter your title', 'charifund-core' ),
+				]
+		);
+
+		$this->add_control(
+			'button_link',
+			[
+			  'label' => __( 'Button Url', 'charifund-core' ),
+			  'type' => Controls_Manager::URL,
+			  'placeholder' => __( 'https://your-link.com', 'charifund-core' ),
+			  'show_external' => true,
+			  'default' => [
+				'url' => '',
+				'is_external' => true,
+				'nofollow' => true,
+			  ],
+			
+		   ]
+		);
+
+		$this->end_controls_section();
+		
+		
+		$this->start_controls_section(
+			'team_settings',
+			[
+				'label' => __( 'Team Setting', 'charifund-core' ),
+				'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+			]
+		);
+
+
+		$this->add_group_control(
+			\Elementor\Group_Control_Typography::get_type(),
+			[
+				'name'      => 'name_typography',
+				'label'     => __( 'Typography', 'charifund-core' ),
+				// 'condition' => [
+				// 	'subtitle' => 'show',
+				// ],
+				'selector'  => '{{WRAPPER}} .team .team__single-content h6',
+			]
+		);
+
+		$this->add_control(
+			'name_color',
+			[
+				'label'     => __( 'Color', 'charifund-core' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				// 'condition' => [
+				// 	'subtitle' => 'show',
+				// ],
+				'selectors' => [
+					'{{WRAPPER}} .team .team__single-content h6' => 'color: {{VALUE}} !important',
+				],
+			]
+		);
+
+
+
+		$this->add_group_control(
+			\Elementor\Group_Control_Typography::get_type(),
+			[
+				'name'      => 'designation_typography',
+				'label'     => __( 'Typography', 'charifund-core' ),
+				// 'condition' => [
+				// 	'title' => 'show',
+				// ],
+				'selector'  => '{{WRAPPER}} .team .team__single-content p',
+			]
+		);
+
+		$this->add_control(
+			'designation_color',
+			[
+				'label'     => __( 'Color', 'charifund-core' ),
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				// 'condition' => [
+				// 	'title' => 'show',
+				// ],
+				'selectors' => [
+					'{{WRAPPER}} .team .team__single-content p' => 'color: {{VALUE}} !important',
+				],
+			]
+		);
+
+
+		$this->end_controls_section();
+
+	
+
+	
+		}
+
+	/**
+	 * Render button widget output on the frontend.
+	 * Written in PHP and used to generate the final HTML.
+	 *
+	 * @since  1.0.0
+	 * @access protected
+	 */
+	protected function render() {
+		$settings = $this->get_settings_for_display();
+		$allowed_tags = wp_kses_allowed_html('post');
+		?>
+
+		<?php  if ( 'style1' === $settings['style'] ) : ?>	
+			<div class="team home-10">	
+				<div class="team_single-wrapper home-10">
+					<div class="team_single">
+						<div class="team_single-thumb">
+							<?php  if ( !empty(esc_url($settings['image']['id']) )) : ?>   
+								<img src="<?php echo wp_get_attachment_url($settings['image']['id']);?>" alt="img"/>
+							<?php endif;?>
+
+							<div class="team_single-content">
+								<p><?php echo $settings['subtitle'];?></p>
+								<h6><a href="<?php echo esc_url($settings['button_link']['url']);?>"><?php echo $settings['title'];?></a></h6>
+
+								<div class="team_icons">
+								
+								<div class="team_single_thumb-social">
+									<ul>
+										<?php foreach($settings['repeat'] as $item):?>	
+										<li>
+											<a href="<?php echo esc_url($item['block_button_link']['url']);?>">
+											<i class="<?php echo str_replace("icon ", " ", esc_attr( $item['block_icons']['value']));?>"></i>
+											</a>
+										</li>
+										<?php endforeach; ?>
+									</ul>
+								</div>
+							</div>
+								
+							</div>
+						</div>
+						
+					</div>
+				</div>
+			</div>
+		<?php  elseif ( 'style2' === $settings['style'] ) : ?>		
+			<div class="team home11 p-0 m-0">	
+				<div class="team__single-wrapper">
+					<div class="team__single van-tilt">
+						<div class="team__single-thumb">
+							<?php  if ( !empty(esc_url($settings['image']['id']) )) : ?>   
+								<img src="<?php echo wp_get_attachment_url($settings['image']['id']);?>" alt="<?php echo esc_attr($settings['alt_text']);?>"/>
+							<?php endif;?>
+							<div class="team__icons">
+								<div class="team__single-content__icon">
+								<i class="fa-solid fa-plus"></i>
+								</div>
+								<div class="team__single__thumb-social">
+									<ul>
+										<?php foreach($settings['repeat'] as $item):?>	
+										<li>
+											<a href="<?php echo esc_url($item['block_button_link']['url']);?>">
+											<i class="<?php echo str_replace("icon ", " ", esc_attr( $item['block_icons']['value']));?>"></i>
+											</a>
+										</li>
+										<?php endforeach; ?>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<div class="team__single-content">
+							<h6><a href="<?php echo esc_url($settings['button_link']['url']);?>"><?php echo $settings['title'];?></a></h6>
+							<p><?php echo $settings['subtitle'];?></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		<?php endif ;?>	
+
+             
+		<?php 
+	}
+
+
+}
+
+Plugin::instance()->widgets_manager->register_widget_type(new Team_Grid_Five());

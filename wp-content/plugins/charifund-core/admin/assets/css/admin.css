@@ -1,0 +1,206 @@
+/***********************************
+    Charifund Custom widget css
+************************************/
+.charifund_flogo_uploader {
+    display: block;
+    width: 100%;
+    background-color: #f2f2f2;
+    border: 1px dashed rgba(0,0,0,0.3);
+    padding: 10px 20px;
+    cursor: pointer;
+    color: #515151;
+    margin-top: 10px;
+}
+.charifund_flogo_uploader:focus{
+    outline: none;
+}
+.charifund-logo-preview img{
+    max-width: 100%;
+}
+.charifund-form-control{
+    display: block;
+    width: 100%;
+    resize: none;
+}
+
+.charifund_sub_title {
+    background-color: #f2f2f2;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+.charifund_small_text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #777;
+}
+
+.charifund_small_text span {
+    background-color: #f2f2f2;
+    padding: 2px 5px;
+    color: #444;
+}
+.charifund-logo-preview {
+    background-color: #f2f2f2;
+    display: inline-block;
+}
+
+/*********************************
+    charifund core admin css
+**********************************/
+.ocdi__import-mode-switch{
+    display: none !important;
+}
+.ThemeIM-import-demo-content-wrapper .main-title {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+.ThemeIM-single-import-demo-box .title {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 30px;
+    margin-bottom: 30px;
+}
+
+.ThemeIM-single-import-demo-box {
+    background-color: #fff;
+    box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);
+    padding: 30px;
+    border-radius: 3px;
+}
+
+ul.ThemeIM-important-point {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+ul.ThemeIM-important-point li {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: #656565;
+    position: relative;
+    padding-left: 15px;
+}
+
+ul.ThemeIM-important-point li+li {
+    margin-top: 10px;
+}
+
+ul.ThemeIM-important-point li:after {
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: #fc4444;
+    content: '';
+}
+/*--------------------------
+    Codester Framwork css
+---------------------------*/
+
+.csf-text-desc mark {
+    background-color: #ededed;
+    padding: 5px;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.csf-theme-dark .csf-header-inner h1 small {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0 5px;
+}
+
+
+.csf-theme-dark .csf-header-inner h1 small {
+    color: #aaa5a5;
+}
+.csf-header-left h1 small a{
+    color: #fc4444;
+    padding-left:5px
+}
+.csf-header-left h1 small a:focus{
+    outline: none;
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    box-shadow: none;
+}
+
+.csf-theme-dark .csf-header-inner h1 small {
+    color: #eeeeeebd !important;
+}
+
+.csf-header-left h1 {
+    font-size: 24px;
+    line-height: 34px;
+    font-weight: 700;
+    margin-right: 10px;
+}
+
+.csf-header-left h1 a {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ff5820;
+    text-decoration: none;
+}
+
+.csf-header-left h1 a span {
+    margin-left: 10px;
+    font-size: 12px;
+    /*margin-right: 5px;*/
+}
+
+.csf-header-left h1 small a {
+    color: #ffffff;
+    padding-left: 5px;
+    font-size: 14px;
+}
+
+.csf-text-desc, .csf-text-subtitle {
+    font-weight: 400;
+    margin-top: 10px;
+    color: #999;
+    line-height: 30px;
+}
+
+.csf-field-image_select img {
+    width: 100%;
+}
+
+@media only screen and (max-width: 1366px) {
+    .csf-modal-inner ,
+    .csf-modal-content{
+        height: 580px !important;
+        overflow-y: auto;
+    }
+}
+.toplevel_page_charifund_theme_options.wp-has-current-submenu {
+    background-color: #fff !important;
+    color: #000 !important;
+}
+#adminmenu #toplevel_page_charifund_theme_options img {
+    padding-top: 7px;
+    width: 20px;
+    height: 20px;
+}
+
+.neaterller-font-size50{
+    font-size: 50px;
+    line-height: 60px
+}
+
+.cs-element-select-preloader-style img,
+.cs-element-select-preloader-style svg,
+.preloader_section img,
+.preloader_section svg {
+    width: 120px;
+    max-height: 120px;
+    min-height: 120px;
+}

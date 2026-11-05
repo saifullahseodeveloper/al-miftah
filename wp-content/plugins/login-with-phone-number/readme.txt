@@ -1,0 +1,303 @@
+=== OTP Login With Phone Number, OTP Verification ===
+Contributors: glboy
+Requires at least: 5.9
+Tested up to: 7.1
+Stable tag: 1.8.79
+License: GPLv2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Tags: otp login, phone number login, sms verification, otp verification, passwordless login
+
+Passwordless OTP login for WordPress. Login or register with phone number via SMS or Firebase. Compatible with WooCommerce. GDPR-compliant.
+
+== Description ==
+
+**OTP Login With Phone Number** lets your users login and register using their mobile phone number — no password required. Send a One-Time Password (OTP) via SMS or Firebase and authenticate instantly.
+
+Works seamlessly with WordPress and is fully compatible with WooCommerce login, registration, and checkout pages. Supports 20+ SMS gateways and lets you connect any custom SMS provider for free.
+
+[youtube https://www.youtube.com/watch?v=0B0sE9JMzCE]
+
+---
+
+### 🔑 KEY FEATURES (FREE)
+
+* **Phone number login & registration** — replace or extend the default WordPress login
+* **OTP via SMS or Firebase** — free Firebase integration included
+* **Compatible with WooCommerce** — works on My Account, checkout, and registration pages
+* **Compatible with LearnPress** — OTP login on course checkout pages
+* **Email login** — let users login with email + OTP (no password)
+* **Country flags & auto country code detection**
+* **Passwordless login** — frictionless UX, higher conversion rates
+* **Redirect after login/register** to any URL
+* **Page protection** — restrict pages to logged-in users only
+* **Password recovery** via phone number OTP
+* **Existing user sync** — match phone numbers already stored in user meta (e.g. WooCommerce billing phone)
+* **Store phone with or without country code**
+* **Custom gateway** — connect any SMS provider yourself via URL + JSON config
+* **GDPR-compliant**
+* **Translation-ready** — includes Persian (fa_IR), compatible with WPML & Polylang
+* **Multisite support**
+* **Shortcodes** for embedding login form anywhere
+* **Custom CSS** support
+
+---
+
+### 📱 FREE SMS GATEWAYS
+
+* **Firebase** — free OTP via Google Firebase (recommended for international sites)
+* **MSG91** — India SMS gateway
+* **kwtSMS** — Kuwait SMS gateway
+* **Netgsm** — Turkey SMS gateway
+* **Webruno SMS** — free Iranian SMS gateway, powered by Webruno
+* **Custom API** — connect any SMS gateway using your own URL, headers, and body config
+
+### 📱 PRO SMS GATEWAYS
+
+* Twilio
+* WhatsApp via UltraMessage
+* Telegram
+* Alibabacloud
+* MessageBird
+* Trustsignal
+* Taqnyat (Arabic)
+* 2Factor
+* Textlocal
+* Vonage
+* SMS.ir
+* MelliPayamak
+* FarazSMS
+
+---
+
+### 🔌 COMPATIBLE WITH
+
+* WooCommerce login, registration & checkout
+* LearnPress course checkout
+* Woodmart Theme sidebar login
+* Elementor (via shortcode)
+* WPForms (via shortcode)
+* Contact Form 7 (via shortcode)
+* Gutenberg (native "OTP Login Form" block)
+* WPBakery, Divi (via shortcode)
+* WPML & Polylang (translation-ready)
+
+---
+
+### ⚡ USE CASES
+
+* eCommerce stores — reduce cart abandonment with frictionless phone login
+* WooCommerce shops — phone-verified checkout without passwords
+* Membership sites — verified user registration via OTP
+* LMS platforms — secure student login for online courses
+* Booking sites — quick login without password
+* Any site wanting to reduce fake registrations and improve security
+
+---
+
+### 🚀 PRO VERSION
+
+Unlock advanced features with the [Pro version](https://idehweb.com/product/login-with-phone-number-in-wordpress/):
+
+* 15+ additional SMS gateways (Twilio, WhatsApp, Telegram, and more)
+* Advanced form builder & UI customization
+* Custom registration fields
+* Default user role assignment
+* Custom gateway development support
+* Priority support
+
+---
+
+### 📄 SHORTCODES
+
+`[idehweb_lwp]` — embed the login/register form anywhere
+
+`[idehweb_lwp_metas phone_number="true" email="true"]` — show logged-in user's phone/email
+
+`[idehweb_lwp_verify_email]` — email verification form
+
+---
+
+### 📚 Documentation & Support
+
+* [Full Documentation](https://idehweb.com/product/login-with-phone-number-in-wordpress/)
+* [GitHub Repository](https://github.com/hamidalinia/login-with-phone-number)
+* [Report Security Bug](https://patchstack.com/database/vdp/login-with-phone-number)
+
+---
+
+== Installation ==
+
+1. Install the plugin from the WordPress plugin directory or upload the zip file
+2. Activate through the 'Plugins' menu in WordPress
+3. Go to **Login Settings** in your WordPress admin
+4. Choose your SMS gateway and configure it
+5. Use `[idehweb_lwp]` shortcode on any page or let the plugin replace the default login form
+
+== Frequently Asked Questions ==
+
+= Does this plugin work with WooCommerce? =
+Yes. The plugin is fully compatible with WooCommerce. It replaces or extends the login and registration forms on the My Account page, checkout page, and registration forms — all without passwords.
+
+= Which SMS gateways are free? =
+Firebase, MSG91, kwtSMS, Netgsm, Webruno SMS, and Custom API are free. Firebase is recommended for international sites. You can also connect any SMS provider yourself using the Custom API option.
+
+= Is Firebase free to use? =
+Yes. Firebase OTP is free within Google's usage limits and is the recommended gateway for international sites.
+
+= Can users login with both phone number and email? =
+Yes. You can enable dual login — phone number OTP or email OTP — from the settings.
+
+= Does this replace the default WordPress login page? =
+You can configure it to replace or work alongside the default login. Fully configurable.
+
+= Can I use this on existing users? =
+Yes. The plugin syncs with existing WordPress users. If a phone number is stored in user meta (e.g. WooCommerce billing_phone), it will match automatically. You can also run a bulk sync from the settings page.
+
+= Does it support Google SSO? =
+Yes. Pro version supports Google SSO alongside phone number login.
+
+= Is the plugin translation-ready? =
+Yes. Compatible with WPML, Polylang, and standard .po/.mo translation files. Includes Persian (fa_IR) translation out of the box.
+
+= Does it work on multisite? =
+Yes. Multisite is supported.
+
+= Can I customize the login form appearance? =
+Yes. Custom CSS is supported in the free version. Pro version includes a full style panel — colors, fonts, logo, background, button styles.
+
+= Which page builders are supported? =
+Use the `[idehweb_lwp]` shortcode inside Elementor, WPBakery, Divi, or any page builder that supports shortcodes. In the block editor, add the "OTP Login Form" block.
+
+= Can I add extra fields to the registration form? =
+Yes, with the Pro version you can add custom registration fields and collect additional user data on signup.
+
+= Does it work with LearnPress? =
+Yes. The plugin is compatible with LearnPress and replaces the login/checkout form for course purchases.
+
+= How can I connect my own SMS gateway? =
+Use the Custom API option — enter your gateway URL, request method (GET/POST), headers, and body in JSON format. Use `${code}` as a placeholder for the OTP code.
+
+= How can I report security bugs? =
+Through the Patchstack Vulnerability Disclosure Program: [Report a vulnerability](https://patchstack.com/database/vdp/login-with-phone-number)
+
+== Screenshots ==
+
+1. Login form with phone number and country flag selector
+2. OTP verification screen
+3. Admin settings — general configuration
+4. Gateway settings panel
+5. Compatible with WooCommerce checkout
+
+== Changelog ==
+
+= 1.8.79 =
+* Security: fixed a profile phone-number takeover. Users can no longer set or change their own login phone number from the profile page; only administrators can, and a number already used by another account is rejected.
+* Security: the "Sync old WooCommerce users billing phone" tool now skips numbers that are invalid or already used by another account.
+* Fix: when a phone number is attached to more than one account, login no longer creates additional empty accounts for it. The request is refused and the user is asked to contact the site administrator.
+* Note for site administrators: because of the issue above, check for phone numbers shared by several accounts and resolve them manually. Run this query (adjust the table prefix if yours is not wp_): SELECT meta_value, COUNT(*) c FROM wp_usermeta WHERE meta_key='phone_number' GROUP BY meta_value HAVING c > 1;
+* Note: the phone number field on the profile page is now read-only for non-administrators.
+
+= 1.8.78 =
+* Security: fixed unauthenticated account takeover via non-numeric phone number lookup and weak Firebase phone-number binding (strict exact match, empty/duplicate phone numbers rejected).
+* Security: fixed email-change OTP reuse; the code must now be issued for the pending email address, and an address owned by another account can no longer be claimed.
+* Security: added capability checks to admin AJAX handlers; profile phone field now validates digits only.
+* New: Gutenberg block for the login form.
+
+= 1.8.76 =
+* Security: fixed OTP brute-force account takeover (atomic attempt limit, code request throttling, constant-time comparison, password login throttling).
+
+= 1.8.74 =
+* New: added Webruno SMS gateway — free Iranian SMS OTP provider
+
+= 1.8.73 =
+* Fix: Default Role setting was not saving — the select field's name attribute was being stripped for non-PRO users, so the chosen role never reached the database
+* Fix: PHP 8.1+ deprecation notice (array offset on false) when reading localization settings before they've ever been saved
+* Fix: "Sync old WooCommerce users billing phone" button now shows a loading/success/error state instead of appearing unresponsive
+* New: separate Privacy Policy link field, independent from the Terms & Conditions link
+* New: option to hide the country-code selector entirely, for sites serving a single country/locale
+* Improvement: replaced the large promotional banner on the settings page with a smaller, less intrusive upgrade card
+* Improvement: switched wp_redirect() to wp_safe_redirect() (with proper exit()) in the login redirect flow
+
+
+= 1.8.72 =
+* Fix: resolved a fatal ArgumentCountError in check_sms_gateway_configuration_notice() that could occur when third-party notice-management plugins re-triggered the admin_notices hook without passing the expected argument. The $page parameter now has a default value, so the function can safely run with zero arguments.
+
+= 1.8.71 =
+* Security fix: added rate limiting and lockout on OTP verification (login, registration, email activation) — code is now invalidated after too many wrong attempts, and max attempts is configurable in General settings
+* Reset attempt counter whenever a fresh OTP is issued
+
+= 1.8.65 =
+* Enable show form on checkout page
+
+= 1.8.63 =
+* Maintenance and stability improvements
+
+= 1.8.61 =
+* Fixed Firebase vulnerability reported by Wordfence
+
+= 1.8.59 =
+* Added: DrPayamak Iranian SMS gateway (free)
+* MSG91 moved to Pro
+* Optimized country selector on mobile
+
+= 1.8.58 =
+* Added: Kavenegar SMS gateway (free)
+
+= 1.8.57 =
+* Added: MSG91 gateway
+
+= 1.8.52 =
+* Fixed security vulnerabilities — nonce verification on all forms
+* Added input validation and sanitization
+* Fixed AJAX authentication with proper cookie handling
+* Added external services disclosure
+
+= 1.8.50 =
+* Added GPLv2 license declaration
+* Refactored main plugin into modular files
+* Fixed fatal error on sites without WooCommerce
+* Enhanced PHP 8+ compatibility
+* Improved admin settings UI
+* Added test SMS feature before saving gateway settings
+* Fixed multisite settings saving issue
+
+= 1.8.43 =
+* Added option to show login form on all pages (except WooCommerce My Account)
+
+= 1.8.36 =
+* Added Netgsm Turkey SMS gateway
+
+= 1.8.26 =
+* Added WhatsApp OTP as default system gateway
+
+= 1.8.25 =
+* Added option to store phone numbers without country code
+
+== Upgrade Notice ==
+
+= 1.8.78 =
+Critical security fix: unauthenticated account takeover. Update immediately.
+
+= 1.8.71 =
+Security fix: OTP brute-force protection. Update recommended for all users.
+
+= 1.8.63 =
+Recommended update for all users.
+
+== External Services ==
+
+This plugin uses the following external services:
+
+**Firebase Authentication** (optional — only when Firebase gateway is selected)
+- Verifies phone numbers via OTP
+- Data sent: phone number, IP address
+- [Terms](https://firebase.google.com/terms) | [Privacy](https://firebase.google.com/support/privacy)
+
+**Crisp Chat** (optional, can be disabled in Settings > Installation)
+- Live chat support inside the plugin admin panel
+- Data sent: chat messages, name, email, IP address
+- [Terms](https://crisp.chat/en/terms/) | [Privacy](https://crisp.chat/en/privacy/)
+
+**Microsoft Clarity** (optional, can be disabled in Settings > Installation)
+- Anonymous usage analytics on the plugin admin pages only. No visitor or frontend data collected.
+- [Terms](https://clarity.microsoft.com/terms) | [Privacy](https://privacy.microsoft.com/en-us/privacystatement)
