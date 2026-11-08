@@ -28,7 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
-            header("Location: profile.php");
+            if ($user['role'] === 'admin') {
+                header("Location: admin-panel/index.php");
+            } else {
+                header("Location: profile.php");
+            }
             exit();
         } else {
             // Check for plain text (for migrated WordPress users)
@@ -42,7 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
                 $upd = $pdo->prepare("UPDATE custom_users SET password = ? WHERE id = ?");
                 $upd->execute([$new_hash, $user['id']]);
                 
-                header("Location: profile.php");
+                if ($user['role'] === 'admin') {
+                    header("Location: admin-panel/index.php");
+                } else {
+                    header("Location: profile.php");
+                }
                 exit();
             } else {
                 $error = "Ghalat Email/Mobile ya Password.";

@@ -16,18 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = "Please enter both username and password.";
     } else {
-        $stmt = $pdo->prepare("SELECT id, username, password, role FROM custom_users WHERE username = ?");
-        $stmt->execute([$username]);
+        $stmt = $pdo->prepare("SELECT id, username, email, password, role FROM custom_users WHERE username = ? OR email = ?");
+        $stmt->execute([$username, $username]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-            header("Location: index.php");
-            exit();
+            if ($user['role'] !== 'admin') {
+                $error = "Aapka account admin nahi hai. Sirf Admin yahan login kar sakte hain.";
+            } else {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['role'] = $user['role'];
+                header("Location: index.php");
+                exit();
+            }
         } else {
-            $error = "Invalid username or password.";
+            $error = "Ghalat Username/Email ya Password.";
         }
     }
 }
@@ -58,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
         <form method="POST" action="">
             <div class="form-group">
-                <label>Username</label>
-                <input type="text" name="username" required>
+                <label>Username or Email</label>
+                <input type="text" name="username" placeholder="admin ya email likhein" required>
             </div>
             <div class="form-group">
                 <label>Password</label>
