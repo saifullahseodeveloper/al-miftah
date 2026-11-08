@@ -21,7 +21,14 @@
         100% { opacity: 0; visibility: hidden; display: none !important; pointer-events: none !important; }
     }
     svg.e-font-icon-svg,
-    .e-font-icon-svg,
+    .e-font-icon-svg {
+        width: 22px !important;
+        height: 22px !important;
+        max-width: 24px !important;
+        max-height: 24px !important;
+        display: inline-block !important;
+        vertical-align: middle !important;
+    }
     .elementor-icon-list-icon svg {
         width: 22px !important;
         height: 22px !important;
@@ -30,19 +37,6 @@
         display: inline-block !important;
         vertical-align: middle !important;
         fill: #C8963E !important;
-    }
-    .elementor-icon-list-item {
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-    }
-    .elementor-icon-list-icon {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        line-height: 1 !important;
-        width: 24px !important;
-        height: 24px !important;
     }
     /* Carousel / Swiper navigation arrow buttons */
     .elementor-swiper-button,
