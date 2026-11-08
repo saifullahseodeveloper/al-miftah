@@ -10,6 +10,17 @@ header('Content-Type: text/html; charset=utf-8');
     <link rel="profile" href="https://gmpg.org/xfn/11">
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>Al-miftah &#8211; Hope for a Better Tomorrow</title>
+    <style id="almiftah-core-preloader-fix">
+    /* Preloader: Max 2.0s Hard Auto-Dismiss */
+    .preloader {
+        animation: amDismissPreloader 0.4s ease 2s forwards !important;
+    }
+    @keyframes amDismissPreloader {
+        0% { opacity: 1; visibility: visible; }
+        99% { opacity: 0; visibility: hidden; }
+        100% { opacity: 0; visibility: hidden; display: none !important; pointer-events: none !important; }
+    }
+    </style>
 <meta name='robots' content='max-image-preview:large' />
 <link rel='dns-prefetch' href='//fonts.googleapis.com' />
 <link rel="alternate" type="application/rss+xml" title="Al-miftah - Hope for a Better Tomorrow &raquo; Feed" href="https://al-miftah.org/feed/" />
@@ -1161,6 +1172,24 @@ a    { text-decoration: none; color: inherit; }
 			<img class="preloader-icon-img preloader-icon-bg" src="wp-content/uploads/2026/04/al-miftah-official-logo.png" alt="img">
 	            <p>Al Miftah</p>
     </div>
+
+    <script>
+    (function() {
+        function hideLoader() {
+            var p = document.querySelector('.preloader');
+            if (p && p.style.display !== 'none') {
+                p.style.transition = 'opacity 0.4s ease, visibility 0.4s ease';
+                p.style.opacity = '0';
+                p.style.pointerEvents = 'none';
+                setTimeout(function() { p.style.display = 'none'; }, 400);
+            }
+        }
+        setTimeout(hideLoader, 2000);
+        window.addEventListener('load', function() {
+            setTimeout(hideLoader, 500);
+        });
+    })();
+    </script>
 
             <!-- ==== off canvas start ==== -->
             <div class="off-canvas d-none d-xl-block" >

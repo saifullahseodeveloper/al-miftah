@@ -110,7 +110,9 @@
      */
 
     if ($(".preloader").length) {
-      $(".preloader").delay(500).fadeOut();
+      setTimeout(function() {
+        $(".preloader").fadeOut(400);
+      }, 500);
     }
 
     /**

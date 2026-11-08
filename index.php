@@ -11,6 +11,15 @@
     .progress-wrap {
         display: none !important;
     }
+    /* Preloader: Max 2.0s Hard Auto-Dismiss */
+    .preloader {
+        animation: amDismissPreloader 0.4s ease 2s forwards !important;
+    }
+    @keyframes amDismissPreloader {
+        0% { opacity: 1; visibility: visible; }
+        99% { opacity: 0; visibility: hidden; }
+        100% { opacity: 0; visibility: hidden; display: none !important; pointer-events: none !important; }
+    }
     svg.e-font-icon-svg,
     .e-font-icon-svg,
     .elementor-icon-list-icon svg {
@@ -1210,6 +1219,24 @@ a    { text-decoration: none; color: inherit; }
 			<img class="preloader-icon-img preloader-icon-bg" src="wp-content/uploads/2026/04/al-miftah-official-logo.png" alt="img">
 	            <p>Al Miftah</p>
     </div>
+
+    <script>
+    (function() {
+        function hideLoader() {
+            var p = document.querySelector('.preloader');
+            if (p && p.style.display !== 'none') {
+                p.style.transition = 'opacity 0.4s ease, visibility 0.4s ease';
+                p.style.opacity = '0';
+                p.style.pointerEvents = 'none';
+                setTimeout(function() { p.style.display = 'none'; }, 400);
+            }
+        }
+        setTimeout(hideLoader, 2000);
+        window.addEventListener('load', function() {
+            setTimeout(hideLoader, 500);
+        });
+    })();
+    </script>
 
             <!-- ==== off canvas start ==== -->
             <div class="off-canvas d-none d-xl-block" >
