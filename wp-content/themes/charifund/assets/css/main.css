@@ -2288,13 +2288,6 @@ span {
       -ms-flex-pack: center;
           justify-content: center;
   -webkit-box-orient: vertical;
-  animation: amDismissPreloader 0.4s ease 2s forwards !important;
-}
-@keyframes amDismissPreloader {
-  0% { opacity: 1; visibility: visible; }
-  99% { opacity: 0; visibility: hidden; }
-  100% { opacity: 0; visibility: hidden; display: none !important; pointer-events: none !important; }
-}
   -webkit-box-direction: normal;
       -ms-flex-direction: column;
           flex-direction: column;
